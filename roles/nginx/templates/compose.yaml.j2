@@ -1,0 +1,36 @@
+services:
+  nginx:
+    container_name: "{{ nginx_name }}"
+    image: "{{ harbor_url_for_nginx }}:{{ nginx_version_tag }}"
+    ports:
+      - "{{ nginx_ports }}:443"
+    volumes:
+      - conf:/etc/nginx
+      - certs:/opt/ssl
+      - html:/usr/share/nginx/html
+    logging:
+      options:
+        tag: "{{ nginx_name }}"
+    healthcheck:
+      test: ["CMD", "service", "nginx", "status"]
+      interval: 30s
+      timeout: 5s
+      retries: 15
+    networks:
+      - internal_net
+
+volumes:
+  conf:
+    name: "{{ nginx_volume }}"
+  certs:
+    name: "{{ cert_volume }}"
+  html:
+    name: "{{ banner_volume }}"
+
+networks:
+  internal_net:
+    driver: bridge
+    ipam:
+     driver: default
+     config:
+       - subnet: "{{ nginx_subnet }}"

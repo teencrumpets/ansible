@@ -1,0 +1,106 @@
+- name: Site - Setting hostname if it doesn't exist in inventory
+  set_fact:
+    hostname: "{{HOSTS}}"
+  when: hostname is not defined
+
+- name: Site - Check if server has valid hostname
+  set_fact:
+    valid_name: false
+    old_name: "{{ansible_hostname}}"
+  when: hostname != ansible_hostname and verify_hostname
+
+- name: Site - Find and remove wrong hostname and set correct one to 127.0.1.1
+  replace:
+    path: /etc/hosts
+    regexp: '^127.*{{ old_name }}.*$'
+    replace: "127.0.1.1 {{ hostname }}"
+  when: not valid_name and verify_hostname
+
+- name: Site - Add correct host if missing
+  lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.1\.1\s+'
+    line: "127.0.1.1 {{ hostname }}"
+  when: verify_hostname
+
+- name: Site - Set hostname
+  hostname: 
+    name: "{{ hostname }}"
+
+- name: Site - Configure apt to use IPv4 only
+  lineinfile:
+    path: /etc/apt/apt.conf.d/98-force-ipv4
+    line: 'Acquire::ForceIPv4 "true";' 
+    regexp: '(?i)ForceIPv4'
+    create: true
+
+- name: Site - Verify apt IPv4 config
+  replace:
+    path: /etc/apt/apt.conf.d/98-force-ipv4
+    regexp: '(?i)ForceIPv4'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+
+- name: Site - Add Microsoft repo to apt sources
+  shell: 'echo "deb [arch=amd64 trusted=yes] https://packages.microsoft.com/ubuntu/24.04/prod noble main" | sudo tee /etc/apt/sources.list.d/microsoft-prod.list'
+  args:
+    chdir: /etc/apt/sources.list.d
+    creates: /etc/apt/sources.list.d/microsoft-prod.list
+
+- name: Site - Uninstall unattended-upgrades package
+  package:
+    name: unattended-upgrades
+    state: absent
+
+- name: Site - Disable unattended-upgrades service
+  service:
+    name: unattended-upgrades
+    enabled: false
+    state: stopped
+  ignore_errors: yes
+
+- name: Site - Removing configuration for unattended-upgrades
+  file:
+    path: /etc/apt/apt.conf.d/20auto-upgrades
+    state: absent
+
+- import_role:
+    name: 'shared_linux/update_linux'
+  when: auto_update
+  
+- name: Site - Install packages
+  package:
+    name:
+      - git
+      - less
+      - powershell
+      - nfs-common
+      - curl
+      - wget
+      - unzip
+      - openssl
+      - open-vm-tools
+    state: present
+
+- import_role:
+    name: 'shared_linux/user_management'
+  when: manage_users_profiles
+
+- import_role:
+    name: 'shared_linux/nessus'
+  when: install_nessus
+
+- name: Site - Remove nessus
+  apt:
+    name: nessusagent
+    state: absent
+  when: not install_nessus
+
+- name: Site - Remove nessus directory
+  file:
+    state: absent 
+    path: /opt/nessus_agent
+  when: not install_nessus

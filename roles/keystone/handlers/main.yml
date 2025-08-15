@@ -1,0 +1,9 @@
+- name: restart_docker
+  service:
+    name: docker
+    state: restarted
+  when: isPhysical
+
+- name: mount_all
+  shell: 'mount -a'
+  when: isPhysical

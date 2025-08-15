@@ -1,0 +1,19 @@
+# Connection variables
+ansible_user: ypgansible
+ansible_ssh_pass: "{{ vault_ssh_pass }}"
+ansible_become_pass: "{{ vault_ssh_pass }}"
+ansible_become: yes
+
+# Site Variables
+run_ubuntu: true
+run_rhel: true
+run_docker: true
+mode: "none"
+snow_url: "https://snow.yuma.army.mil/"
+snow_user: "svc.rest.api"
+nfs_share: "6.2.2.243:/nec_svr_ops"
+backup_share: "6.2.2.133:/export/Backup"
+backup_mount_dir: "/mnt/app"
+nec_svr_ops_dir: "/mnt/svr_ops"
+ssh_key: true
+clean_inventory: false

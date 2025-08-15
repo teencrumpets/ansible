@@ -1,0 +1,7 @@
+jira_db: "jiradb"
+jira_db_connection: "jiradb"
+jira_db_user: "jiradb"
+jira_ports: "9000"
+jira_proxy_name: "localhost"
+jira_healthcheck: "http://localhost:8080/status"
+manage_users_profiles: ''

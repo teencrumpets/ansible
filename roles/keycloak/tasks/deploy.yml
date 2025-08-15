@@ -1,0 +1,70 @@
+- name: Mounting nfs_share for binary data
+  mount:
+    src: "{{ nfs_share }}"
+    path: "{{ nec_svr_ops_dir_keycloak }}"
+    state: mounted
+    fstype: nfs
+  changed_when: false
+
+- name: Create Keycloak compose file
+  template:
+    src: compose.yaml.j2
+    dest: "{{ compose_path }}/compose.yaml"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+  when: keycloak_mode in ["deploy"]
+  
+- name: Create Keycloak service
+  command:
+    cmd: 'docker compose up -d --no-start'
+    chdir: "{{ compose_path }}"
+  changed_when: false
+
+- name: Copy cacerts file for Keycloak
+  copy:
+    src: "{{ trust_store_path }}"
+    dest: "/var/lib/docker/volumes/{{ cert_volume }}/_data/cacerts"
+    remote_src: true
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Copy Initial User file for Keycloak
+  template:
+    src: initial_user.yaml.j2
+    dest: "{{ compose_path }}/initial_user.yaml"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+  when: keycloak_mode in ["deploy"]
+
+- name: Start Keycloak service
+  command:
+    cmd: 'docker compose -f compose.yaml -f initial_user.yaml up -d'
+    chdir: "{{ compose_path }}"
+  changed_when: false
+  when: keycloak_mode in ["deploy"]
+
+- name: Ensure Keycloak is up before continuing
+  uri:
+    url: "https://{{ keycloak_hostname }}/realms/master/.well-known/openid-configuration"
+    method: GET
+    return_content: true
+    status_code: 200
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+    body_format: json
+    validate_certs: no
+  register: health_check
+  retries: 12
+  delay: 5
+  until: health_check.json.issuer is defined and health_check.json.issuer == "https://{{ keycloak_hostname }}/realms/master"
+  when: keycloak_mode in ["deploy"]
+
+- name: Remove Initial User file for Keycloak
+  file:
+    path: "{{ compose_path }}/initial_user.yaml"
+    state: absent
+  when: keycloak_mode in ["deploy"]

@@ -1,0 +1,2 @@
+hostname: "{{HOSTS}}"
+valid_name: true

@@ -1,0 +1,30 @@
+- name: "{{ item.description }}"
+  ufw:
+    rule: "{{ item.rule }}"
+    direction: "{{ item.direction }}"
+    to_port: "{{ item.to_port | default('') }}"
+    from_ip: "{{ item.from_ip | default('') }}"
+    proto: "{{ item.proto }}"
+  changed_when: false
+  when: not item.to_ip is defined
+
+- name: "{{ item.description }}"
+  ufw:
+    rule: "{{ item.rule }}"
+    direction: "{{ item.direction }}"
+    to_port: "{{ item.to_port | default('') }}"
+    proto: "{{ item.proto }}"
+  changed_when: false
+  when: (not item.to_ip is defined) and (not item.from_ip is defined) and (to_port is defined)
+
+- name: "{{ item.description }}"
+  ufw:
+    rule: "{{ item.rule }}"
+    direction: "{{ item.direction }}"
+    to_port: "{{ item.to_port | default('') }}"
+    from_port: "{{ item.from_port | default('') }}"
+    to_ip: "{{ item.to_ip | default('') }}"
+    from_ip: "{{ item.from_ip | default('') }}"
+    proto: "{{ item.proto }}"
+  changed_when: false
+  when: (item.from_ip is defined) and (item.to_ip is defined)

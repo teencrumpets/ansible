@@ -1,0 +1,109 @@
+trigger: none
+
+pool:
+  name: 's6_triggered_24.04'
+
+variables:
+  - group: Ansible
+
+steps:
+- bash: echo "##vso[task.setvariable variable=vm_name]ansible_$(uuidgen)"
+  displayName: Generating hostname
+
+- script: echo $(vm_name)
+  displayName: Displaying hostname
+
+- script: pipx upgrade --include-injected ansible
+  displayName: 'Upgrade pipx'
+
+- script: rm -f ~/.ssh/known_hosts
+  displayName: 'Purging known hosts'
+
+- task: DownloadSecureFile@1
+  name: vault_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: 'vault_key_dev'
+
+- task: DownloadSecureFile@1
+  name: stigman_privkey
+  displayName: 'Download private Key'
+  inputs:
+    secureFile: 'stigman_prod_privkey.pem'
+- script: >
+    ansible-playbook dynamic-site.yml -e 
+    "ENV=dev
+    vm_name=$(Agent.Name) 
+    role=stigman
+    rm_hosts_file=/home/ado_build_agent/.ssh/known_hosts 
+    mode=deploy
+    run_dod_certs=''
+    allow_reboot=''
+    ssh_keys=''
+    vm_cleanup=true
+    stigman_private=$(stigman_privkey.secureFilePath) 
+    validation_group=stigman_validation 
+    build_agent_name=$(Agent.Name)" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating STIGMan deploy role'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e 
+    "ENV=dev
+    vm_name=$(Agent.Name)
+    role=stigman
+    run_dod_certs=''
+    allow_reboot=''
+    ssh_keys=''
+    rm_hosts_file=/home/ado_build_agent/.ssh/known_hosts 
+    mode=restore 
+    stigman_private=$(stigman_privkey.secureFilePath) 
+    validation_group=stigman_validation 
+    build_agent_name=$(Agent.Name)" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating STIGMan restore role'
+
+- script: >
+    ansible-playbook dynamic-site.yml -e 
+    "ENV=dev
+    run_docker=''
+    check_vm=''
+    vm_name=$(Agent.Name)  
+    role=stigman 
+    mode=backup 
+    stigman_private=$(stigman_privkey.secureFilePath) 
+    validation_group=stigman_validation 
+    build_agent_name=$(Agent.Name)" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating STIGMan backup role'
+
+- script: >
+    ansible-playbook dynamic-site.yml -e 
+    "ENV=dev
+    run_docker=''
+    check_vm=''
+    vm_name=$(Agent.Name) 
+    role=stigman 
+    mode=bounce 
+    stigman_private=$(stigman_privkey.secureFilePath) 
+    validation_group=stigman_validation 
+    build_agent_name=$(Agent.Name)" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating STIGMan bounce role'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e 
+    "ENV=dev
+    run_docker=''
+    check_vm=''
+    vm_cleanup=true
+    vm_name=$(Agent.Name)
+    role=stigman 
+    mode=update 
+    stigman_private=$(stigman_privkey.secureFilePath) 
+    validation_group=stigman_validation 
+    build_agent_name=$(Agent.Name)" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating STIGMan update role'

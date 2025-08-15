@@ -1,0 +1,287 @@
+hostname: "{{ HOSTS }}"
+validation_script_args:
+  ubuntu_ref_number: "e616a84ef5980210076d78669130ddc2"
+  install_status: "1"
+  os: "Ubuntu Server 24.04"
+  environment: "Lab"
+  user_name: "UMvalidate"
+  email: "UMValidate.null@"
+  u_gid: "99999"
+  u_uid: "99999"
+  server_table_uri: "api/now/table/cmdb_ci_server"
+  user_table_uri: "api/now/table/sys_user"
+  profile_table_uri: "api/now/table/u_user_server_profiles"
+  map_table_uri: "api/now/table/u_user_server_map"
+  ssh_and_pwhash_uri_query: "?sysparm_fields=u_password_hash%2Cu_public_ssh_key"
+  sys_id_for_user: "001APISysIDForUserDoNotUse"
+  sys_id_for_server: "001APISysIDForServerDoNotUse"
+  sys_id_for_profile: "001APISysIDForProfileDoNotUse"
+  sys_id_for_map: "001APISysIDForMapDoNotUse"
+  username: "UMvalidate"
+
+default_accounts: 
+  - username: root
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: daemon
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: bin
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: sys
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: sync
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: games
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: man
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: lp
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: mail
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: news
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: uucp
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: proxy
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: www-data
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: backup
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: list
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: irc
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: gnats
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: systemd-network
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: systemd-resolve
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: systemd-timesync
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: messagebus
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: syslog
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: _apt
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: tss
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: uuidd
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: tcpdump
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: landscape
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: pollinate
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: usbmux
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: sshd
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: systemd-coredump
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: ypgansible
+    uid: 1000
+    gid: 1000
+    ssh: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDRkJxxvGWk06Ljg1Ui118ZG14h6fVnXv0mbBsRVDu6DdXNTkGZv5qgMBkPOfljtq0FW29QsYpXtl0Utk8lNo7IwrnHEMbrjqUJ5rXg8pyyuP0vj2AzLpUmN4uk9MtXHSLIMQd2kL/0uvh3l186jbwLg2hBPIl5QwNGedQ4EblmcjcwLKk3ZwSEJ3OHHlnRorrGZei+LLgr7owf6x2/4DBoK85UGzDurVWicR08hG9vXpuphL2z96I7Z4G+2ZDoINEftaE45yzGDQ8BydztobEe0c3rO6tL8Mdep5//056YfLI7fh25Xx4dnUaF2cFBAS+imVEogTyQ/9AWhif8JFP0f7KSsRO66Zpj5TjndG4xZmbSUR0bxrXnFpxgQLSoMwcHsS5+S5eM7YPgz7BJTSOcY5e1K8wnKf2rBykvIc7hF6Tb7vMhWHOo5BDM63KoEdlJf9xRTI9DwiT7BLmWo8SDslfsPqh1oQoggWtbctUy4LnTl+TsH5fmCMpVrHG2fsCIflwTTNdZEvY+ubf5QBBA1391cipSq9Co4nXd/WVTerpYTSnKAdS1OuYz1V8fMSDo1gGeH9W40wtPJK23HgA0l7QNoI+r/fU4c60KJcCCiH1yMLrtlKtu06sa8fbigVWd6exQjwuQdFB9TzA832Mv0o6wzJNP36g7cOHYFTd9rw=="
+    password_hash: 
+  - username: lxd
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: _rpc
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: statd
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: _chrony
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: postfix
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: fwupd-refresh
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: nobody
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: acas
+    uid: 990
+    gid: 990
+    ssh: "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBCUjBKWthh8gqVqslAHC/lW5m6Oi7He3a1Suk8VuzT5+anf7wXxegcmQiDpWV8+pU/mdHwVGgN0n8qlZPbVCWyg="
+    password_hash: "$6$SR0h.K/IZOVjb5AH$s..R62M5iUsd1HeBoZsFwo2T2EvlLDTy9E0t61yxccDChC1EEz9Y51ArU3lXNrv38WhNUAd4EKsOvRpht6t4B0"
+  - username: mfe
+    uid:
+    gid:
+    ssh:
+    password_hash:
+  - username: adm
+    uid:
+    gid:
+    ssh:
+    password_hash:
+  - username: shutdown
+    uid:
+    gid:
+    ssh:
+    password_hash:
+  - username: halt
+    uid:
+    gid:
+    ssh:
+    password_hash:
+  - username: operator
+    uid:
+    gid:
+    ssh:
+    password_hash:
+  - username: ftp
+    uid:
+    gid:
+    ssh:
+    password_hash:
+  - username: dbus
+    uid:
+    gid:
+    ssh:
+    password_hash:
+  - username: polkitd
+    uid:
+    gid:
+    ssh:
+    password_hash:
+  - username: unbound
+    uid:
+    gid:
+    ssh:
+    password_hash:
+  - username: sssd
+    uid:
+    gid:
+    ssh:
+    password_hash:
+  - username: fapolicyd
+    uid:
+    gid:
+    ssh:
+    password_hash:
+  - username: chrony
+    uid: 
+    gid:
+    ssh:
+    password_hash:
+  - username: rpcuser
+    uid: 
+    gid:
+    ssh:
+    password_hash:

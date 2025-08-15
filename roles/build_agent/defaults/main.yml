@@ -1,0 +1,4 @@
+ado_url: 'https://devops.yuma.army.mil/NECCollection'
+nec_svr_ops_dir_build_agent: "{{ nec_svr_ops_dir }}/build_agent"
+cert_path: "{{nec_svr_ops_dir_build_agent}}/docker_volumes/truststore/build_agents/DoDRoot.crt"
+use_msodbcsql18: false

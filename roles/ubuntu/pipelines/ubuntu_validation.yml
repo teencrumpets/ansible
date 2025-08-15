@@ -1,0 +1,33 @@
+trigger: none
+
+pool:
+  name: 's6_triggered_24.04'
+
+variables:
+  - group: Ansible
+
+steps:
+- script: pipx upgrade --include-injected ansible
+  displayName: 'Upgrade pipx'
+
+- task: DownloadSecureFile@1
+  name: vault_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: 'vault_key_dev'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e
+    "ENV=dev
+    run_dod_certs=''
+    role=ubuntu
+    HOSTS=$(vm_name)
+    rm_hosts_file=/home/ado_build_agent/.ssh/known_hosts 
+    validation_group='ubuntu_validation'
+    vm_cleanup=true
+    check_vm=''
+    build_agent_name=$(Agent.Name)
+    vm_name=$(Agent.Name)" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating Ubuntu Role'

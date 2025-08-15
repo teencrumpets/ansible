@@ -1,0 +1,8 @@
+inventory.yml
+host_vars/lab.yml
+**/lab.yml
+*.code-workspace
+*.log
+*.jks
+*.p12
+*.pem

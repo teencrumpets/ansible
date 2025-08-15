@@ -1,0 +1,140 @@
+- name: Configure firewalld rsyslog linux port
+  firewalld:
+    port: "{{ rsyslog_linux_port }}/tcp"
+    permanent: true
+    state: enabled
+  notify: reload_firewalld
+
+- name: Configure firewalld audit port
+  firewalld:
+    port: "{{ rsyslog_audit_port }}/tcp"
+    permanent: true
+    state: enabled
+  notify: reload_firewalld
+
+- name: Configure rsyslog.conf modules
+  lineinfile:
+    path: /etc/rsyslog.conf
+    state: present
+    insertbefore: BOF
+    line: '$ModLoad imfile'
+    regexp: '^(?i)\$ModLoad\simfile'
+  when: manage_auditlog_offloading
+  notify: restart_rsyslog
+
+- name: Verify /etc/rsyslog.conf module configuration
+  replace:
+    path: /etc/rsyslog.conf
+    regexp: '^(?i)\$ModLoad\simfile'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_auditlog_offloading
+
+- name: rsyslog playbook - Configure /etc/rsyslog.conf
+  lineinfile:
+    path: /etc/rsyslog.conf
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { line: '*.* @@{{ rsyslog_server_ip }}:{{ rsyslog_linux_port }}', regexp: '^\*\.\*\s+@.*' }
+    - { line: 'auth.*;authpriv.*;daemon.* /var/log/secure', regexp: '(?i)auth\.\*;authpriv\.\*;daemon\.\*\s*\/var\/log\/secure' }
+  when: manage_auditlog_offloading
+  notify: restart_rsyslog
+
+- name: rsyslog playbook - Verify /etc/rsyslog.conf
+  replace:
+    path: /etc/rsyslog.conf
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '^\*\.\*\s+@.*' }
+    - { regexp: '(?i)auth\.\*;authpriv\.\*;daemon\.\*\s*\/var\/log\/secure' }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_auditlog_offloading
+
+- name: Create lines in a file based on rsyslog_monitor list
+  lineinfile:
+    path: /etc/rsyslog.d/00-ansible.conf
+    state: present
+    insertbefore: BOF
+    line: $InputFileName {{ item.inputfilename }}
+    create: yes
+  loop: "{{ rsyslog_monitor }}"
+  notify: restart_rsyslog
+  when: manage_auditlog_offloading
+
+- name: Create lines in a file based on rsyslog_monitor list
+  lineinfile:
+    path: /etc/rsyslog.d/00-ansible.conf
+    state: present
+    line: $InputFileTag {{ item.inputfiletag }}
+    insertafter: '{{ item.inputfilename }}'
+  loop: "{{ rsyslog_monitor }}"
+  notify: restart_rsyslog
+  when: manage_auditlog_offloading
+
+- name: Create rsyslog omfwd redirection
+  lineinfile:
+    path: /etc/rsyslog.d/00-ansible.conf
+    state: present
+    line: if $syslogtag contains "{{ item.inputfiletag }}" then { action(type="omfwd" target="{{ item.target }}" port="{{ item.port }}" protocol="{{ item.protocol }}") stop }
+  loop: "{{ rsyslog_monitor }}"
+  notify: restart_rsyslog
+  when: manage_auditlog_offloading
+
+- name: Add runfilemonitor for rsyslog
+  lineinfile:
+    path: /etc/rsyslog.d/00-ansible.conf
+    state: present
+    insertbefore: 'if\s\$syslog'
+    firstmatch: true
+    line: $InputRunFileMonitor
+    regexp: '^(?i)\$InputRunFileMonitor'
+  when: manage_auditlog_offloading
+  notify: restart_rsyslog
+
+- name: Verify runfilemonitor configuration
+  replace:
+    path: /etc/rsyslog.d/00-ansible.conf
+    regexp: '^(?i)\$InputRunFileMonitor'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_auditlog_offloading
+
+# These checks will be off in Defaults>main for the time being since encryption is not in use at the moment, confirmed with CSO
+- name: rsyslog playbook - Configure /etc/rsyslog.conf - V-230481, V-230482
+  lineinfile:
+    path: /etc/rsyslog.conf
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { line: '$DefaultNetstreamDriver gtls', regexp: '^(?i)\$DefaultNetstream', managed: "{{ manage_rhel8_v_230481 }}" }
+    - { line: '$ActionSendStreamDriverMode 1', regexp: '^(?i)\$ActionSendStreamDriverMode', managed: "{{ manage_rhel8_v_230481 }}" }
+    - { line: '$ActionSendStreamDriverAuthMode x509/name', regexp: '^(?i)\$ActionSendStreamDriverAuthMode', managed: "{{ manage_rhel8_v_230482 }}" }
+  when: item.managed
+
+- name: verify /etc/rsyslog.conf
+  replace:
+    path: /etc/rsyslog.conf
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '^(?i)\$DefaultNetstream', managed: "{{ manage_rhel8_v_230481 }}" }
+    - { regexp: '^(?i)\$ActionSendStreamDriverMode', managed: "{{ manage_rhel8_v_230481 }}" }
+    - { regexp: '^(?i)\$ActionSendStreamDriverAuthMode', managed: "{{ manage_rhel8_v_230482 }}" }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed

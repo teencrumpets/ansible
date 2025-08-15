@@ -1,0 +1,82 @@
+- name: Login - Configuring banner - V-238214
+  lineinfile:
+    path: '/etc/ssh/sshd_config'
+    line: 'Banner /etc/issue.net'
+    state: present
+    regexp: '^(?i)Banner'
+  when: manage_ubuntu_V_238214
+
+- name: Login - Copy 'issue.net' file to /etc/issue.net - V-238214
+  copy:
+    src: issue.net
+    dest: /etc/issue.net
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart SSHD
+  when: manage_ubuntu_V_238214
+
+- name: Login - Get list of duplicate UIDs - V-238205
+  shell: awk -F ":" 'list[$3]++{print $1, $3}' /etc/passwd 
+  register: duplicate_UIDs
+  failed_when: "'{{duplicate_UIDs.stdout_lines}}' != '[]'"
+  ignore_errors: yes
+  changed_when: false 
+  when: manage_ubuntu_V_238205
+
+- name: Login - Configuring /etc/login.defs - V-238202, V-238203, V-238209, V-238325
+  lineinfile:
+    path: '/etc/login.defs'
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - {line: 'PASS_MIN_DAYS    1', regexp: '^(?i)PASS_MIN_DAYS', managed: "{{ manage_ubuntu_V_238202 }}" }
+    - {line: 'PASS_MAX_DAYS    60', regexp: '^(?i)PASS_MAX_DAYS', managed: "{{ manage_ubuntu_V_238203 }}" }
+    - {line: "UMASK {{UMASK}}", regexp: '^(?i)UMASK', managed: "{{ manage_ubuntu_V_238209 }}" }
+    - {line: 'ENCRYPT_METHOD SHA512', regexp: '^(?i)ENCRYPT_METHOD', managed: "{{ manage_ubuntu_V_238325 }}" }
+  when: item.managed
+
+- name: Login - Verify /etc/login.defs - V-238202, V-238203, V-238209, V-238325
+  replace:
+    path: '/etc/login.defs'
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '^(?i)PASS_MIN_DAYS', managed: "{{ manage_ubuntu_V_238202 }}" }
+    - { regexp: '^(?i)PASS_MAX_DAYS', managed: "{{ manage_ubuntu_V_238203 }}" }
+    - { regexp: '^(?i)UMASK', managed: "{{ manage_ubuntu_V_238209 }}" }
+    - { regexp: '^(?i)ENCRYPT_METHOD', managed: "{{ manage_ubuntu_V_238325 }}" }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed
+
+#Configuration for User Management
+- name: Login - Change UID and GID min/max 
+  lineinfile:
+    path: /etc/login.defs
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - {line: 'UID_MIN {{ uid_min }}', regexp: '^(?i)UID_MIN' }
+    - {line: 'UID_MAX {{ uid_max }}', regexp: '^(?i)UID_MAX' }
+    - {line: 'GID_MIN {{ gid_min }}', regexp: '^(?i)GID_MIN' }
+    - {line: 'GID_MAX {{ gid_max }}', regexp: '^(?i)GID_MAX' }
+
+- name: Login - Verify UID and GID min/max 
+  replace:
+    path: '/etc/login.defs'
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '^(?i)UID_MIN' }
+    - { regexp: '^(?i)UID_MAX' }
+    - { regexp: '^(?i)GID_MIN' }
+    - { regexp: '^(?i)GID_MAX' }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false

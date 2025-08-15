@@ -1,0 +1,113 @@
+- name: Mounting backup share
+  mount:
+    src: "{{ backup_share }}"
+    path: '{{ backup_mount_dir_jira }}'
+    state: mounted
+    fstype: nfs
+  changed_when: false
+
+- name: Mounting nfs_share
+  mount:
+    src: "{{ nfs_share }}"
+    path: "{{ nec_svr_ops_dir_jira }}"
+    state: mounted
+    fstype: nfs
+  changed_when: false
+
+- name: Jira volume backup direcotry
+  file:
+    state: directory
+    path: "{{ jira_backup_dir }}"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+    
+- name: Ensure compose file exists
+  stat:
+    path: "{{compose_path}}/compose.yaml"
+  register: compose_file_status
+
+- name: Ensuring service is down
+  command:
+    cmd: "docker compose down"
+    chdir: "{{compose_path}}"
+  changed_when: false
+  when: (mode in ["restore"]) and (compose_file_status.stat.exists)
+
+- name: Create compose file
+  template:
+    src: compose.yaml.j2
+    dest: "{{compose_path}}/compose.yaml"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+  when: (mode in ["deploy"]) or (not compose_file_status.stat.exists)
+
+- name: Ensuring any old home volumes are gone
+  command:
+    cmd: "docker volume rm {{jira_volume}} {{db_volume}}"
+    chdir: "{{compose_path}}"
+  failed_when: false
+  changed_when: false
+  when: mode in ["restore"]
+
+- name: Create Jira service
+  command:
+    cmd: 'docker compose up -d --no-start'
+    chdir: "{{compose_path}}"
+  changed_when: false
+
+- name: Copy cacerts file
+  copy:
+    src: "{{trustStorePath}}"
+    dest: /var/lib/docker/volumes/jira-ca/_data/cacerts
+    remote_src: true
+    owner: 2002
+    group: 2002
+    mode: 0774
+
+- name: Postgres volume backup direcotry
+  file:
+    state: directory
+    path: "{{ postgres_backup_dir }}"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Get volume backup list jira
+  find:
+    paths: "{{ jira_restore_dir }}"
+    file_type: file
+  register: backups
+  when: mode in ["restore"]
+
+- name: Get newest volume backup jira
+  set_fact:
+    newest: "{{ backups.files | sort(attribute='mtime') | last }}"
+  when: mode in ["restore"]
+
+- name: Restoring volume jira
+  command:
+    cmd: "tar xvpf {{ newest.path }}"
+    chdir: "/var/lib/docker/volumes/{{jira_volume}}"
+  changed_when: false
+  when: mode in ["restore"]
+
+- name: Get volume backup list postgres
+  find:
+    paths: "{{ postgres_restore_dir }}"
+    file_type: file
+  register: backups
+  when: mode in ["restore"]
+
+- name: Get newest volume backup postgres
+  set_fact:
+    newest: "{{ backups.files | sort(attribute='mtime') | last }}"
+  when: mode in ["restore"]
+
+- name: Restoring volume postgres
+  command:
+    cmd: "tar xvpf {{ newest.path }}"
+    chdir: "/var/lib/docker/volumes/{{db_volume}}"
+  changed_when: false
+  when: mode in ["restore"]

@@ -1,0 +1,174 @@
+trigger: none
+
+pool:
+  name: 's6_triggered_24.04'
+
+parameters:
+  - name: HOSTS
+    displayName: "Name of Server:"
+    type: string
+
+  - name: DEPLOY_MODE
+    displayName: "Does server need to be deployed/created (Select no if physical)"
+    type: string
+    default: none
+    values:
+      - Yes
+      - No
+
+  - name: ENV
+    displayName: "Select Environment:"
+    type: string
+    default: dev
+    values:
+      - prod
+      - prep
+      - dev
+      
+  - name: ASSIGNED_SA
+    displayName: "Assigned SA:"
+    type: string
+
+  - name: Warning
+    displayName: "I acknowledge that if I choose server to be managed by code this system will be ENTIRELY managed by code, including but not limited to; application, user, and patch management."
+    type: string
+    default: none
+    values:
+      - Yes
+  
+  - name: OS
+    displayName: "What is the OS of the server"
+    type: string
+    default: none
+    values:
+      - Ubuntu
+      - RHEL
+
+variables:
+  - group: Ansible
+
+  - name: create_vm
+    ${{ if eq(parameters.DEPLOY_MODE, 'Yes') }}:
+      value: "true"
+    ${{ if eq(parameters.DEPLOY_MODE, 'No') }}:
+      value: ""
+
+  - name: run_ubuntu
+    ${{ if eq(parameters.OS, 'Ubuntu') }}:
+      value: "true"
+    ${{ if eq(parameters.OS, 'RHEL') }}:
+      value: ""
+
+  - name: run_rhel
+    ${{ if eq(parameters.OS, 'RHEL') }}:
+      value: "true"
+    ${{ if eq(parameters.OS, 'Ubuntu') }}:
+      value: ""
+    ${{ if eq(parameters.OS, 'Windows') }}:
+      value: ""
+      
+  - name: vm_operating_system
+    ${{ if eq(parameters.OS, 'Ubuntu') }}:
+      value: "Ubuntu"
+    ${{ if eq(parameters.OS, 'RHEL') }}:
+      value: "RHEL"
+
+  - name: inventory
+    ${{ if eq(parameters.ENV, 'prod') }}:
+      value: "inventory.yml"
+    ${{ if eq(parameters.ENV, 'prep') }}:
+      value: "Pre-Production-inventory.yml"
+    ${{ if eq(parameters.ENV, 'dev') }}:
+      value: "Lab-inventory.yml"
+
+  - name: verify_host
+    ${{ if eq(parameters.ENV, 'prod') }}:
+      value: "true"
+    ${{ if eq(parameters.ENV, 'prep') }}:
+      value: "true"
+    ${{ if eq(parameters.ENV, 'dev') }}:
+      value: ""
+
+  - name: vault
+    ${{ if eq(parameters.ENV, 'prod') }}:
+      value: "vault_key"
+    ${{ if eq(parameters.ENV, 'prep') }}:
+      value: "vault_key_prep"
+    ${{ if eq(parameters.ENV, 'dev') }}:
+      value: "vault_key_dev"
+      
+steps:
+- script: pipx upgrade --include-injected ansible
+  displayName: 'Upgrade pipx'
+
+- script: rm -f ~/.ssh/known_hosts
+  displayName: 'Purging known hosts'
+
+- task: DownloadSecureFile@1
+  name: vault_key_inv
+  displayName: 'Vault Password'
+  inputs:
+    secureFile: vault_key
+
+- task: DownloadSecureFile@1
+  name: ssh_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: 'ypgansible_ssh'
+
+- script: chmod 600 $(ssh_key.secureFilePath)
+  displayName: 'Setting SSH Key permissions'
+
+- script: >  
+    ansible-playbook dynamic-inventory.yml 
+    -e
+    "HOSTS=localhost
+    inventory_owner=$(inventory_owner)
+    inventory_group=$(inventory_group)
+    inventory_path=$(inventory_path)"
+    --vault-password-file=$(vault_key_inv.secureFilePath)
+    --key-file '$(ssh_key.secureFilePath)'
+  displayName: 'Updating Inventory'
+
+- task: DownloadSecureFile@1
+  name: vault_key
+  displayName: 'Vault Password'
+  inputs:
+    secureFile: $(vault)
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -i $(inventory_path)/$(inventory)
+    -e
+    'HOSTS=${{parameters.HOSTS}}
+    vm_operating_system=$(vm_operating_system)
+    create_vm=$(create_vm)
+    assigned_sa=${{parameters.ASSIGNED_SA}}
+    run_ubuntu=$(run_ubuntu)
+    run_rhel=$(run_rhel)
+    role=deploy
+    ManagedByCode='true'
+    ssh_key='true'
+    register='true'
+    check_vm='true'
+    ENV=${{parameters.ENV}}
+    vm_name=${{parameters.HOSTS}}
+    rm_hosts_file=/home/ado_build_agent/.ssh/known_hosts
+    verify_hostname=""'
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Running Deploy Server Automation'
+  condition: eq(variables['create_vm'], 'true')
+
+- script: >
+    ansible-playbook site.yml
+    -i $(inventory_path)/$(inventory)
+    -e
+    "HOSTS=${{parameters.HOSTS}}
+    role=deploy
+    create_vm=$(create_vm)
+    ManagedByCode='true'
+    ENV=${{parameters.ENV}}
+    ssh_key='true'"
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Running Deploy Server For Existing/Physical Servers'
+  condition: and(succeededOrFailed(), ne(variables['create_vm'], 'true')) 

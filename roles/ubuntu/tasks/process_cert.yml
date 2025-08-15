@@ -1,0 +1,29 @@
+- name: Process_cert - Get certificate subject name
+  command:
+    cmd: "openssl x509 -noout -subject -in {{ item.path }}"
+  register: cert_subject_output
+  changed_when: false 
+
+- name: Process_cert - Set fact for sanitized subject name
+  set_fact:
+    sanitized_subject_name: >-
+      {{ cert_subject_output.stdout | replace('subject= ', '') | split('/') | last | split('=') | last | trim | replace(' ', '_') }}
+
+- name: Process_cert - Set fact for destination path
+  set_fact:
+    dest_file_path: "{{ certdir }}/{{ sanitized_subject_name }}.crt"
+
+- name: Process_cert - Check if destination certificate already exists
+  stat:
+    path: "{{ dest_file_path }}"
+  register: dest_cert_stat
+  
+
+- name: Process_cert - Move certificate to final destination
+  copy:
+    src: "{{ item.path }}"
+    dest: "{{ dest_file_path }}"
+    remote_src: yes 
+    mode: '0644'
+  when: not dest_cert_stat.stat.exists
+  notify: Update certificate trust store

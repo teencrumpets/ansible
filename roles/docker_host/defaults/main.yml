@@ -1,0 +1,23 @@
+default_docker_daemon:
+  log-driver: syslog
+  log-opts:
+    syslog-address: tcp://6.2.4.36:10615
+    syslog-facility: daemon
+
+disruptive_mode: false
+trivy_tmp_dir: ""
+run_ubuntu: true
+harbor_name: registry.web.yuma.army.mil
+harbor_user: admin
+harbor_service_account: harbor_service_account
+harbor_project: "library"
+ci_cd_mount_dir: /mnt/ci_cd
+source_registry: "docker.io"
+docker_nfs_share: "{{nec_svr_ops_dir}}/docker"
+trivy_vuln_db_path: "{{docker_nfs_share}}/trivy/database"
+image_assessment_share: /mnt/nec_app/docker
+vuln_tracking_folder: '//necfs/NEC/NEC_App/Vuln\040Tracking/Trivy\040Results'
+ado_pl_svc_account: svc.ypgr.pl_ai
+ticket_exp: 5h
+keytab_dir: /home/ypgansible/keytab
+credential_file: /root/.smb_credential

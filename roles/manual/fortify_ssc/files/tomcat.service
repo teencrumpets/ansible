@@ -1,0 +1,29 @@
+[Unit]
+Description=Tomcat 9 servlet container
+After=network.target
+
+[Service]
+Type=forking
+
+User=tomcat
+Group=tomcat
+
+UMask=0027
+
+Environment="JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64"
+Environment="JAVA_OPTS=-Djava.security.egd=file:///dev/urandom -Djava.awt.headless=true"
+
+Environment="CATALINA_BASE=/opt/tomcat/version/"
+Environment="CATALINA_HOME=/opt/tomcat/version/"
+Environment="CATALINA_PID=/opt/tomcat/version/temp/tomcat.pid"
+Environment="CATALINA_OPTS=-Xms512M -Xmx1024M -server -XX:+UseParallelGC"
+Environment="CATALINA_OPTS2=-Dorg.apache.catalina.connector. RECYCLE_FACADES=true"
+Environment="CATALINA_OPTS3=-Dorg.apache.catalina.STRICT_SERVLET_COMPLIANCE=true"
+Environment="CATALINA_OPTS4=-Dorg.apache.catalina.connector.ALLOW_BACKSLASH=false" 
+Environment="CATALINA_OPTS5=-Dorg.apache.catalina.connector.response.ENFORCE_ENCODING_IN_GET_WRITER=true"
+
+ExecStart=/opt/tomcat/version/bin/startup.sh
+ExecStop=/opt/tomcat/version/bin/shutdown.sh
+
+[Install]
+WantedBy=multi-user.target

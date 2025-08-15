@@ -1,0 +1,182 @@
+- name: Download MariaDB installer
+  get_url:
+    url: "{{ mariadb_install }}"
+    dest: "{{ mariadb_dest }}"
+  register: download_result
+
+- name: Download Glide base package
+  get_url:
+    url: "{{ glide_install }}"
+    dest: "{{ glide_dest }}"
+
+- name: Download mariadb cnf file
+  get_url:
+    url: "{{ mycnf_download }}"
+    dest: "{{ mycnf_dest }}" 
+
+- name: Extract glide-base from a tar archive
+  command:
+    cmd: "tar zxf /glide/{{glide_base}} --exclude='logs' --exclude='nodes' --exclude='temp' -C /glide"
+  args:
+    creates: /glide/bin
+  changed_when: false
+
+- name: Extract mymycnf from a tar archive
+  command:
+    cmd: "tar zxf /glide/{{ mycnf }} -C /etc"
+  args:
+    creates: /etc/{{ mycnf }}  
+  changed_when: false
+
+- name: Create a new group for mysql
+  group:
+    name: mysql
+    state: present
+
+- name: Create a mysql user account
+  user:
+    name: mysql
+    state: present
+    home: /home/mysql
+    shell: /bin/bash
+    groups:
+      - mysql
+
+- name: Check current default zone
+  command: firewall-cmd --get-default-zone
+  register: current_zone
+
+- name: Set firewall default zone to work
+  command: firewall-cmd --set-default-zone=work
+  when: current_zone.stdout != 'work'
+
+- name: Modify firewall to allow connections DB
+  firewalld:
+    zone: work
+    port: "{{ fw_port }}"
+    permanent: true
+    state: enabled
+
+- name: Reload firewalld
+  service:
+    name: firewalld
+    state: reloaded
+
+- name: Extract mariaDB from a tar archive
+  unarchive:
+    src: "{{ mariadb_dest }}"
+    dest: /glide
+  args:
+    creates: /glide/{{ mariadb_link }}  
+    remote_src: yes 
+
+- name: Create a symbolic link to mysql
+  file:
+    src: "{{ mariadb_link }}"
+    dest: /glide/mysql
+    state: link
+
+- name: Create a directory temp
+  file:
+    path: /glide/mysql/temp
+    state: directory
+
+- name: Change ownership recursively to mysql
+  file:
+    path: /glide/mysql
+    owner: mysql
+    group: mysql
+    recurse: yes
+    state: directory
+
+- name: Run script to install base config files for MariaDB
+  shell: /glide/mysql/scripts/mysql_install_db >> install.txt
+  args: 
+    chdir: /glide/mysql
+  register: script_result
+  changed_when: script_result.changed
+  become_user: mysql
+
+- name: Check if script ran successfully
+  debug:
+    msg: "Script ran successfully"
+  when: script_result.changed
+
+- name: Create multiple soft links
+  file:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    state: link
+  with_items:
+    - { src: "/glide/bin/mysql.server-glide.sh", dest: "/etc/init.d/mysql" }
+    - { src: "/etc/init.d/mysql", dest: "/etc/rc3.d/S99mysql" }
+    - { src: "/etc/init.d/mysql", dest: "/etc/rc3.d/K01mysql" }
+    - { src: "/etc/init.d/mysql", dest: "/etc/rc5.d/S99mysql" }
+    - { src: "/etc/init.d/mysql", dest: "/etc/rc5.d/K01mysql" }
+
+- name: Copy mysql.service file from Snow_db files to destination system
+  copy:
+    src: mysql.service
+    dest: /etc/systemd/system
+    owner: root
+    group: root
+  changed_when: false
+
+- name: Reload systemd daemon
+  command: systemctl daemon-reload
+
+- name: Start mysql
+  service: 
+    name: mysql
+    state: started
+  tags: service
+
+- name: Create multiple soft links for the mysql service and the admin modules
+  file:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    state: link
+  with_items:
+    - { src: "/etc/systemd/system/mysql.service", dest: "/etc/systemd/system/multi-user.target.wants/mysql.service" }
+    - { src: "/glide/mysql/bin/mysql", dest: "/bin/mysql" }
+    - { src: "/glide/{{mariadb_link}}/bin/mysqladmin", dest: "/bin/mysqladmin" }
+
+- name: Make sure pymysql is present
+  pip:
+    name: pymysql
+    state: present
+
+- name: Set password for the root mysql user so that it can be used to create DBs
+  shell: mysqladmin -u root password "{{ mariadb_pw }}"
+
+- name: Check if MySQL DB exists
+  command: /glide/mysql/bin/mysql -u root -p"{{ mariadb_pw }}" -e "show databases like '{{ snow_db }}'"
+  register: db_check
+  ignore_errors: yes
+  changed_when: false
+
+- name: Drop DB if it exists
+  command: /glide/mysql/bin/mysql -u root -p"{{ mariadb_pw }}" -e "drop database {{ snow_db }}" 
+  when: db_check.stdout | length == ""
+
+- name: Create new DB 
+  command: /glide/mysql/bin/mysql -u root -p"{{ mariadb_pw }}" -e "create database {{ snow_db }}" 
+  args:
+    creates: /glide/mysql/data/{{ snow_db }}
+  
+- name: Set SELinux to permissive - persistent
+  lineinfile:
+    path: /etc/selinux/config
+    regexp: '^SELINUX\s*='
+    line: 'SELINUX=permissive'
+
+- name: Verifying SELinux has been updated
+  replace:
+    path: /etc/selinux/config
+    regexp: '^SELINUX\s*='
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  ignore_errors: true
+  changed_when: false

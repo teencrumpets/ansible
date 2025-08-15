@@ -1,0 +1,70 @@
+- name: YPG Site settings
+  import_tasks: site.yml
+  tags:
+    - site
+
+- name: Packages STIG settings
+  import_tasks: Packages.yml
+  tags:
+    - packages
+
+- name: Audit Rules STIG settings
+  import_tasks: Audit_Rules.yml
+  tags:
+    - audit_rules
+
+- name: Grub STIG settings
+  import_tasks: Grub.yml
+  tags:
+    - grub
+
+- name: Logging STIG settings
+  import_tasks: Logging.yml
+  tags:
+    - logging
+
+- name: PAM STIG settings
+  import_tasks: PAM.yml
+  tags:
+    - pam
+
+- name: Security STIG settings
+  import_tasks: Security.yml
+  tags:
+    - security
+
+- name: Devices STIG settings
+  import_tasks: Devices.yml
+  tags:
+    - devices
+
+- name: UFW configuration
+  import_tasks: UFW.yml
+  tags:
+    - ufw
+
+- name: Login STIG settings
+  import_tasks: Login.yml
+  tags:
+    - login
+
+- name: SSHD STIG settings
+  import_tasks: SSHD.yml
+  tags:
+    - sshd
+
+- name: Filesystem STIG settings
+  import_tasks: Filesystem.yml
+  tags:
+    - filesystem
+
+- name: Audit STIG settings
+  import_tasks: Audit.yml
+  tags:
+    - audit
+
+- name: Certs download and add DoD CA certtificates
+  import_tasks: Certs.yml
+  tags: 
+    - certs
+  when: run_dod_certs

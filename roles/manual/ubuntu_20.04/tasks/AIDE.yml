@@ -1,0 +1,93 @@
+- name: AIDE - Ensure AIDE is installed - V-238371
+  package:
+    name: aide
+    state: present
+  when: manage_ubuntu_V_238371
+
+- name: AIDE - Copy aide file from roles\files to destination system - V-238236
+  copy: 
+    src: aide
+    dest: /tmp/aide
+  changed_when: false
+  when: manage_ubuntu_V_238236
+
+- name: AIDE - Use sha1sum to calculate the checksum of /usr/share/aide/config/cron.daily/aide - V-238236
+  stat:
+    path: /tmp/aide
+  register: firstfilesum
+  when: manage_ubuntu_V_238236
+
+- name: AIDE - Retrieve hash for /tmp/aide - V-238236
+  set_fact:
+    cs1sha1: "{{ firstfilesum.stat.checksum }}"
+  when: manage_ubuntu_V_238236
+
+- name: AIDE - Use sha1sum to calculate the checksum of /etc/cron.daily/aide - V-238236
+  stat:
+    path: /etc/cron.daily/aide
+  register: secondfilesum
+  when: manage_ubuntu_V_238236
+
+- name: AIDE - Retrieve hash for /etc/cron.daily/aide - V-238236
+  set_fact:
+    cs2sha1: "{{ secondfilesum.stat.checksum }}"
+  when: manage_ubuntu_V_238236
+
+- name: AIDE - Compare hashes of /tmp/aide and /etc/cron.daily/aide and copy if they dont match - V-238236
+  copy: 
+    src: aide 
+    dest: /etc/cron.daily/aide
+  when: (cs1sha1 != cs2sha1) and (manage_ubuntu_V_238236)
+
+- name: AIDE - Configuring /etc/aide/aide.conf - V-238303
+  lineinfile:
+      path: /etc/aide/aide.conf
+      line: "{{ item.line }}"
+      state: present
+      regexp: "{{ item.regexp }}"
+  with_items:
+    - { line: '/sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512', regexp: '^(?i)\/sbin\/auditctl' }
+    - { line: '/sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512', regexp: '^(?i)\/sbin\/auditd' }
+    - { line: '/sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512', regexp: '^(?i)\/sbin\/ausearch' }
+    - { line: '/sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512', regexp: '^(?i)\/sbin\/aureport' }
+    - { line: '/sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512', regexp: '^(?i)\/sbin\/autrace' }
+    - { line: '/sbin/audispd p+i+n+u+g+s+b+acl+xattrs+sha512', regexp: '^(?i)\/sbin\/audispd' }
+    - { line: '/sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512', regexp: '^(?i)\/sbin\/augenrules' }
+  when: manage_ubuntu_V_238303
+
+- name: AIDE - Verify /etc/aide/aide.conf - V-238303
+  replace:
+    path: /etc/aide/aide.conf
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '^\/sbin\/auditctl', managed: "{{ manage_ubuntu_V_238303 }}" }
+    - { regexp: '^\/sbin\/auditd', managed: "{{ manage_ubuntu_V_238303 }}" }
+    - { regexp: '^\/sbin\/ausearch', managed: "{{ manage_ubuntu_V_238303 }}" }
+    - { regexp: '^\/sbin\/aureport', managed: "{{ manage_ubuntu_V_238303 }}" }
+    - { regexp: '^\/sbin\/autrace', managed: "{{ manage_ubuntu_V_238303 }}" }
+    - { regexp: '^\/sbin\/audispd', managed: "{{ manage_ubuntu_V_238303 }}" }
+    - { regexp: '^\/sbin\/augenrules', managed: "{{ manage_ubuntu_V_238303 }}" }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed
+
+- name: AIDE - Configuring /etc/default/aide - V-238372, V-238358
+  lineinfile:
+      path: /etc/default/aide
+      line: 'SILENTREPORTS=no'
+      regexp: '^(?i)SILENTREPORTS'
+  when: manage_ubuntu_V_238372
+
+- name: AIDE - Verify /etc/default/aide - V-238372, V-238358
+  replace:
+    path: /etc/default/aide
+    regexp: '^(?i)SILENTREPORTS'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_238372

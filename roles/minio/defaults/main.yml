@@ -1,0 +1,9 @@
+minio_subnet: 192.168.1.192/26
+volume_backups: 1
+
+minio_compose_path: '/opt/compose/minio'
+
+minio_data_volume: '/var/lib/docker/volumes/minio-data'
+backup_mount_dir_minio: '{{ backup_mount_dir }}/minio'
+minio_backup_dir: '{{backup_mount_dir_minio}}/docker_volumes/minio/{{ENV}}/home'
+minio_restore_dir: "{{backup_mount_dir_minio}}/docker_volumes/minio/prod/home"

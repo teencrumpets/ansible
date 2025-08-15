@@ -1,0 +1,81 @@
+- name: Certs - Set cert directory and update command for Debian-based systems
+  set_fact:
+    certdir: "/usr/local/share/ca-certificates"
+    update_cmd: "update-ca-certificates"
+  when: ansible_os_family == 'Debian'
+
+- name: Certs - Create temporary directory for downloads
+  file:
+    path: "{{ temp_dir }}"
+    state: directory
+    mode: '0755'
+  changed_when: false
+
+- name: Certs - Get DoD PKI bundle URL
+  shell: curl -s "{{ disa_url }}" | awk -F '"' 'tolower($2) ~ /dod.zip/ {print $2}'
+  register: dod_bundle_url
+  changed_when: false
+
+- name: Certs - Set fact for DoD PKI bundle URL
+  set_fact:
+    dod_bundle_url: "{{ dod_bundle_url.stdout | trim }}"
+  changed_when: false
+
+- name: Certs - Download the DoD bundle
+  get_url:
+    url: "{{ dod_bundle_url }}"
+    dest: "{{ temp_dir }}/dod_certs.zip"
+  changed_when: false
+
+- name: Certs - Unzip the bundle
+  unarchive:
+    src: "{{ temp_dir }}/dod_certs.zip"
+    dest: "{{ temp_dir }}"
+    remote_src: yes
+    extra_opts:
+      - -j # Junk paths - flatten the directory structure
+  changed_when: false
+
+- name: Certs - Find PKCS#7 bundle files
+  find:
+    paths: "{{ temp_dir }}"
+    patterns: "*DoD.der.p7b"
+    file_type: file
+  register: pkcs7_files
+
+- name: Certs - Convert each PKCS#7 bundle to PEM and collect output
+  command:
+    cmd: "openssl pkcs7 -print_certs -inform DER -in {{ item.path }}"
+  loop: "{{ pkcs7_files.files }}"
+  register: openssl_output
+  changed_when: false
+
+- name: Certs - Combine all PEM outputs into certs.txt
+  copy:
+    content: "{{ openssl_output.results | map(attribute='stdout') | join('\n') }}"
+    dest: "{{ temp_dir }}/certs.txt"
+    mode: '0644'
+  changed_when: false
+
+- name: Certs - Split combined PEM into individual certificate files
+  command:
+    cmd: "awk 'BEGIN {c=0} /subject=/ {c++} {print > \"{{ temp_dir }}/cert.\" c \".pem\"}' {{ temp_dir }}/certs.txt"
+  changed_when: false
+
+- name: Certs - Find individual certificate files in temp_dir
+  find:
+    paths: "{{ temp_dir }}"
+    patterns: "cert.*.pem"
+    file_type: file
+  register: individual_certs
+
+- name: Certs - Process and move each individual certificate
+  include_tasks: process_cert.yml 
+  loop: "{{ individual_certs.files }}" 
+  register: cert_processing_summary
+  
+- name: Certs - Clean up temporary directory
+  file:
+    path: "{{ temp_dir }}"
+    state: absent
+  changed_when: false

@@ -1,0 +1,17 @@
+mariadb_install: "https://downloads.mariadb.org/rest-api/mariadb/10.4.6/8202"
+mariadb_dest: "/glide/mariadb-10.4.6-linux-glibc_214-x86_64.tar.gz"
+glide_install: "https://shotrepo.service-now.com/binaries/glide-base-20240329.tar.gz"
+glide_dest: "/glide/glide-base-20240329.tar.gz"
+mycnf_download: "https://shotrepo.service-now.com/binaries/ServiceNow_mariadb10.4_my.cnf-20220429-512GB.tar.gz"
+mycnf_dest: "/glide/ServiceNow_mariadb10.4_my.cnf-20220429-512GB.tar.gz"
+glide_base: "glide-base-20240329.tar.gz"
+mycnf: "ServiceNow_mariadb10.4_my.cnf-20220429-512GB.tar.gz"
+fw_port: 3306/tcp
+mariadb_extract: "/glide/mariadb-10.4.6-linux-glibc_214-x86_64.tar.gz"
+mariadb_link: "mariadb-10.4.6-linux-glibc_214-x86_64"
+backup_mount_snow: "{{ backup_mount_dir }}"
+snow_backup_dir: "{{ backup_mount_snow }}/snowdb/{{ENV}}"
+run_rhel: ''
+mysql_user: root
+db_backups: 4
+ssh_stig_timeout: 900

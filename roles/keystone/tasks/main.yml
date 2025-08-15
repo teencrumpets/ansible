@@ -1,0 +1,110 @@
+- import_role:
+    name: 'docker_host'
+  when: run_docker
+
+- name: Install ubuntu drivers
+  package:
+    name: ubuntu-drivers-common
+    state: present
+
+- name: Get IP of {{ ansible_hostname }} for service file
+  set_fact:
+    keystone_ip: "{{ ansible_host }}"
+  when: keystone_mode in ["deploy", "update", "proxy_config"]
+
+- name: Add App service file to Nginx
+  delegate_to: "{{ keystone_nginx_server }}"
+  block:
+    - name: Run add service in nginx
+      import_role:
+        name: 'nginx'
+      vars:
+        nginx_mode: "add_service"
+        service_template: "{{ keystone_service_template }}"
+        service_config: "{{ keystone_service_file }}"
+        fqdn: "{{ keystone_url }}"
+        app_server: "{{ keystone_ip }}"
+        app_port: "{{ keystone_ports }}"
+  when: keystone_mode in ["deploy", "update", "proxy_config"]
+
+- name: Ensure compose file exists
+  stat:
+    path: "{{keystone_compose}}/compose.yaml"
+  register: compose_file_status
+
+- name: Ensuring service is down
+  command:
+    cmd: "docker compose down"
+    chdir: '{{ keystone_compose }}'
+  changed_when: false
+  when: (keystone_mode in ["bounce", "update", "restore", "backup"]) and (compose_file_status.stat.exists)
+
+- name: Backup Keystone
+  import_tasks: backup.yml
+  when: keystone_mode in ["update", "backup"]
+
+- name: Create Keystone compose directory
+  file:
+    state: directory
+    path: "{{keystone_compose}}"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+  when: (keystone_mode in ["deploy", "update"]) or (not compose_file_status.stat.exists)
+
+- name: Create Keystone compose file
+  copy:
+    src: compose.yaml
+    dest: "{{keystone_compose}}/compose.yaml"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+  when: (mode in ["deploy", "update"]) or (not compose_file_status.stat.exists)
+
+- name: Ensure override compose file exists
+  stat:
+    path: "{{keystone_compose}}/override.yaml"
+  register: override_file_status
+
+- name: Create keystone override file
+  template:
+    src: override.yaml.j2
+    dest: "{{ keystone_compose }}/override.yaml"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+  when: (keystone_mode in ["deploy", "update"]) or (not override_file_status.stat.exists)
+
+- name: Deploy Keystone
+  import_tasks: deploy.yml
+  when: keystone_mode in ["deploy", "restore"]
+
+- name: Start keystone containers
+  command:
+    cmd: 'docker compose -f compose.yaml -f override.yaml up -d'
+    chdir: '{{ keystone_compose }}'
+  changed_when: false
+  when: (keystone_mode in ["bounce", "update", "deploy", "restore", "backup"]) and (not isPhysical)
+
+- name: Start keystone containers w/ physical profile
+  command:
+    cmd: docker compose -f compose.yaml -f override.yaml --profile physical up -d
+    chdir: '{{ keystone_compose }}'
+  changed_when: false
+  when: (keystone_mode in ["bounce", "update", "deploy", "restore", "backup"]) and (isPhysical)
+
+- name: Cleaning up nfs_share mount
+  mount:
+    src: "{{ nfs_share }}"
+    path: "{{ nec_svr_ops_dir_keystone }}"
+    state: absent
+    fstype: nfs
+  changed_when: false
+
+- name: Cleaning up backup mount
+  mount:
+    src: "{{ backup_share }}"
+    path: "{{ backup_mount_dir_keystone }}"
+    state: absent
+    fstype: nfs
+  changed_when: false

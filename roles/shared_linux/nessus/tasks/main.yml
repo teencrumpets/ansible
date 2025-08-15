@@ -1,0 +1,98 @@
+- name: Install nfs-common 
+  package: 
+    name: nfs-common
+    state: present
+  when: ansible_facts.distribution == 'Ubuntu' 
+
+- name: Install nfs-utils
+  package:
+    name: nfs-utils
+    state: present
+  when: ansible_facts.distribution == 'RedHat'
+
+- name: Create nec_svr_ops_dir mount directory
+  file:
+    state: directory
+    path: "{{ nec_svr_ops_dir }}/nessus"
+    owner: ypgansible
+    group: ypgansible
+    mode: 0770
+
+- name: command for automatic start of rpcbind
+  service:
+    state: started
+    enabled: true
+    name: 'rpcbind'
+    masked: false
+  when: ansible_facts.distribution == 'RedHat'
+
+- name: Mounting nfs nec_svr_ops_dir share
+  mount:
+    src: "{{nfs_share}}"
+    path: "{{ nec_svr_ops_dir }}/nessus"
+    state: mounted
+    fstype: nfs
+  changed_when: false
+  
+- name: Copy file with owner and permissions
+  copy:
+    src: '{{ nec_svr_ops_dir }}/nessus/nessus_agent/{{rhel_nessus_file}}'
+    dest: '/usr/local'
+    remote_src: true
+    mode: '700'
+  when: ansible_facts.distribution == 'RedHat'
+
+- name: Copy file with owner and permissions
+  copy:
+    src: '{{ nec_svr_ops_dir }}/nessus/nessus_agent/{{ubuntu_nessus_file}}'
+    dest: '/usr/local'
+    remote_src: true
+    mode: '700'
+  when: ansible_facts.distribution == 'Ubuntu'
+
+- name: Cleaning up mounts
+  mount:
+    src: "{{nfs_share}}"
+    path: "{{ nec_svr_ops_dir }}/nessus"
+    state: absent
+    fstype: nfs
+  changed_when: false
+
+- name: Install the downloaded package for rhel
+  yum:
+    name: '/usr/local/{{rhel_nessus_file}}'
+    disable_gpg_check: true
+  when: ansible_facts.distribution == 'RedHat'
+
+- name: Install the downloaded package for ubuntu
+  apt:
+    deb: '/usr/local/{{ubuntu_nessus_file}}'
+  when: ansible_facts.distribution == 'Ubuntu'
+
+- name: command for automatic start of nessusagent at reboot
+  service:
+    state: started
+    enabled: true
+    name: 'nessusagent'
+  
+- name: command to link the nessus agent for rhel
+  command: >-
+    /opt/nessus_agent/sbin/nessuscli agent link 
+    {{nessus_link_key}}  {{host_option}} {{port_option}} {{group_option}}
+  when: ansible_facts.distribution == 'RedHat'
+  register: result
+  failed_when: 
+  - '"409" not in result.stdout'
+  - '"Successfully linked" not in result.stdout'
+  changed_when: '"Successfully linked" in result.stdout'
+
+- name: command to link the nessus agent for ubuntu
+  command: >-
+     /opt/nessus_agent/sbin/nessuscli agent link 
+     {{nessus_link_key}} {{host_option}} {{port_option}} {{group_option}}
+  when: ansible_facts.distribution == 'Ubuntu'
+  register: result
+  failed_when: 
+  - '"409" not in result.stdout'
+  - '"Successfully linked" not in result.stdout'
+  changed_when: '"Successfully linked" in result.stdout'

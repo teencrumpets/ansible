@@ -1,0 +1,72 @@
+services:
+  postgres:
+    container_name: "{{ postgres_container_name }}"
+    image: "{{ harbor_url_for_postgres }}:{{ postgres_version_tag }}"
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: "{{ jira_db_connection }}"
+      POSTGRES_USER: "{{ jira_db_user }}"
+      POSTGRES_PASSWORD: "{{ jira_db_password }}"
+      LANG: "{{ collation }}"
+    volumes:
+      - 'database:/var/lib/postgresql/data'
+    logging:
+      options:
+        tag: "{{ postgres_container_name }}"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U {{ jira_db_user }} -d {{ jira_db_connection }}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - internal_net
+      
+  jira:
+    container_name: "{{ jira_container_name }}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    image: "{{ harbor_url_for_jira }}:{{ jira_version_tag }}"
+    ports: 
+      - "{{jira_ports}}:8080"
+    environment: 
+      JVM_SUPPORT_RECOMMENDED_ARGS: "-Djavax.net.ssl.trustStore=/ca/cacerts -Djavax.net.ssl.trustStorePassword={{ trustStorePass }} -Dorg.apache.catalina.connector.response.ENFORCE_ENCODING_IN_GET_WRITER=true -Dorg.apache.catalina.connector.RECYCLE_FACADES=true -Dorg.apache.catalina.STRICT_SERVLET_COMPLIANCE=true"
+      ATL_JDBC_URL: "jdbc:postgresql://{{postgres_container_name}}:5432/{{ jira_db_connection }}"
+      ATL_JDBC_USER: "{{ jira_db_user }}"
+      ATL_JDBC_PASSWORD: "{{ jira_db_password }}"
+      ATL_DB_TYPE: postgres72
+      ATL_DB_DRIVER: org.postgresql.Driver
+      ATL_DB_SCHEMA_NAME: public
+      ATL_PROXY_NAME: '{{ jira_proxy_name }}'
+      ATL_PROXY_PORT: '443'
+      ATL_TOMCAT_SCHEME: 'https'
+      ATL_TOMCAT_SECURE: 'true'
+    volumes: 
+      - 'home:/var/atlassian/application-data/jira'
+      - 'logs:/opt/atlassian/jira/logs'
+      - 'ca:/ca'
+    logging:
+      options:
+        tag: "{{ jira_container_name }}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sk {{jira_healthcheck}} | grep 'RUNNING'"]
+      interval: 30s
+      timeout: 5s
+      retries: 15
+    networks:
+      - internal_net
+      
+volumes:
+  database:
+    name: "{{ db_volume }}"
+  home:
+    name: "{{ jira_volume }}"
+  logs:
+    name: "{{ jira_logs }}"
+  ca:
+    name: "{{ jira_ca }}"
+
+networks:
+  internal_net:
+    driver: bridge

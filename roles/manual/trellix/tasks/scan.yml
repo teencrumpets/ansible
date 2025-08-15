@@ -1,0 +1,24 @@
+- name: Add dockerscan task to Trellix
+  command: /opt/McAfee/ens/tp/bin/mfetpcli --addodstask --name dockerscan --scanpaths /var/lib/docker/
+  ignore_errors: true
+
+- name: Stop docker
+  systemd:
+    state: stopped
+    name: docker
+
+- name: Run Mcafee docker scan
+  command: '/opt/McAfee/ens/tp/bin/mfetpcli --runtask --name dockerscan'
+
+- name: Show file output
+  command: tail -n 14 /var/McAfee/ens/log/tp/mfetpd.log 
+  register: scan_result
+
+- name: Output results of docker scan
+  debug:
+    var: scan_result.stdout_lines
+
+- name: Start docker
+  systemd:
+    state: started
+    name: docker

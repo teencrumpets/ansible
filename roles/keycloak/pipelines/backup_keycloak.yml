@@ -1,0 +1,44 @@
+trigger: none
+
+pool:
+  name: 's6_scheduled_24.04'
+
+variables:
+  - group: Ansible
+  - group: YPG_Environment
+
+steps:
+- script: pipx upgrade --include-injected ansible
+  displayName: 'Upgrade pipx'
+
+- script: rm -f ~/.ssh/known_hosts
+  displayName: 'Purging known hosts'
+
+- task: DownloadSecureFile@1
+  name: ssh_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: 'ypgansible_ssh'
+
+- task: DownloadSecureFile@1
+  name: vault_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: vault_key
+
+- script: chmod 600 $(ssh_key.secureFilePath)
+  displayName: 'Setting SSH Key permisisons'
+
+- script: >
+    ansible-playbook site.yml 
+    -i $(inventory_path)/inventory.yml 
+    -e 
+    "HOSTS=$(docker_host) 
+    role=keycloak 
+    ENV=prod 
+    keycloak_mode=backup 
+    run_docker='' 
+    run_ubuntu=''" 
+    --vault-password-file=$(vault_key.secureFilePath) 
+    --key-file '$(ssh_key.secureFilePath)'
+  displayName: 'Running Keycloak Backup'

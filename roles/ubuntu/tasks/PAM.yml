@@ -1,0 +1,140 @@
+- name: PAM - Remove nullok from any pam.d files - V-270714
+  replace:
+    path: '/etc/pam.d/common-password'
+    regexp: '(?<!#)\bnullok\b'
+    replace: ''
+  when: manage_ubuntu_V_270714
+
+- name: PAM - Sha512 parameter to common-password - V-270725
+  replace:
+    path: '/etc/pam.d/common-password'
+    replace: '\1 sha512'
+    regexp: (?i)^(password\s+\[success=\d\s+default=ignore\]\s+pam_unix\.so\s+obscure(?!.*sha).*)
+  when: manage_ubuntu_V_270725
+
+- name: PAM - Verifying sha512 parameter to common-password - V-270725
+  replace:
+    path: /etc/pam.d/common-password
+    regexp: '(?i)^password\s+\[success=\d\s+default=ignore\]\s+pam_unix\.so'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_270725
+
+- name: PAM - Configuring /etc/pam.d/common-auth - V-270706
+  lineinfile:
+    path: /etc/pam.d/common-auth
+    regexp: '^auth\s+required\s+pam_faildelay.so'
+    line: 'auth    required    pam_faildelay.so    delay=4000000'
+  when: manage_ubuntu_V_270706
+
+- name: PAM - Verifying /etc/pam.d/common-auth V-270706
+  replace:
+    path: /etc/pam.d/common-auth
+    regexp: '^auth\s+required\s+pam_faildelay.so'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_270706
+
+- name: PAM - Insert Begin Ansible Block line to file - V-270690
+  lineinfile:
+    path: '/etc/pam.d/common-auth'
+    create: yes
+    state: present
+    line: '# BEGIN ANSIBLE MANAGED BLOCK'
+    insertafter: '(?:pam_unix\.so|pam_sss\.so)'
+  when: manage_ubuntu_V_270690
+
+- name: PAM - Insert End Ansible Block line to file - V-270690
+  lineinfile:
+    path: '/etc/pam.d/common-auth'
+    state: present
+    line: '# END ANSIBLE MANAGED BLOCK'
+    insertafter: '(?:BEGIN ANSIBLE MANAGED BLOCK|auth\s+sufficient\s+pam_faillock\.so\s+authsucc)'
+  when: manage_ubuntu_V_270690
+
+- name: PAM - Configuring pam.d/common-auth - V-270690
+  blockinfile:
+    path: '/etc/pam.d/common-auth'
+    state: present 
+    block: |
+      auth     [default=die]  pam_faillock.so authfail
+      auth     sufficient     pam_faillock.so authsucc
+  when: manage_ubuntu_V_270690
+
+- name: PAM - Initialize regexp for pam.d/common-auth - V-270690
+  set_fact:
+    regex_for_pam_file: |
+      (?i)^auth\s+\[default=die]\s+pam_faillock\.so\s+authfail\s*
+      auth\s+sufficient\s+pam_faillock\.so\s+authsucc
+  when: manage_ubuntu_V_270690
+
+- name: PAM - Verify pam.d/common-auth - V-270690
+  replace:
+    path: '/etc/pam.d/common-auth'
+    regexp: '{{item.regexp}}'
+    replace: ''
+  with_items:
+    - { regexp: '{{regex_for_pam_file}}' }
+    - { regexp: '(?i)^#\s+BEGIN\s+ANSIBLE\s+MANAGED\s+BLOCK' }
+    - { regexp: '(?i)^#\s+END\s+ANSIBLE\s+MANAGED\s+BLOCK' }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_270690
+  
+- name: PAM - Configuring security/limits.conf - V-270690
+  lineinfile:
+    path: /etc/security/faillock.conf
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { line: 'audit', regexp: '(?i)^audit' }
+    - { line: 'silent', regexp: '(?i)^silent' }
+    - { line: 'deny = 3', regexp: '(?i)^deny' }
+    - { line: 'fail_interval = 900', regexp: '(?i)^fail_interval' }
+    - { line: 'unlock_time = 0', regexp: '(?i)^unlock_time' }
+  when: manage_ubuntu_V_270690 
+
+- name: PAM - Verify security/limits.conf - V-270690
+  replace:
+    path: '/etc/security/faillock.conf'
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '(?i)^audit' }
+    - { regexp: '(?i)^silent' }
+    - { regexp: '(?i)^deny' }
+    - { regexp: '(?i)^fail_interval' }
+    - { regexp: '(?i)^unlock_time' }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_270690
+
+- name: PAM - Configuring /etc/security/pwquality.conf - V-270705 
+  lineinfile:
+    path: '/etc/security/pwquality.conf'
+    line: 'enforcing = 1'
+    state: present
+    regexp: '(?i)^enforcing'
+  when: manage_ubuntu_V_270705
+
+- name: PAM - Verify /etc/security/pwquality.conf - V-270705 
+  replace:
+    path: '/etc/security/pwquality.conf'
+    regexp: '(?i)^enforcing'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_270705

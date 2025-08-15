@@ -1,0 +1,27 @@
+volume_backups: 1
+jira_subnet: 192.168.3.128/26
+backup_mount_dir_jira: '{{ backup_mount_dir }}/jira'
+nec_svr_ops_dir_jira: '{{ nec_svr_ops_dir }}/jira'
+compose_path: '/opt/compose/jira'
+jira_log_name: "jira_log"
+jira_ca: "jira-ca"
+db_volume: "jira-db"
+jira_volume: "jira-home"
+jira_logs: "jira-logs"
+collation: "en_US.UTF-8"
+postgres_container_name: "postgres"
+jira_container_name: "jira"
+trustStorePath: "{{nec_svr_ops_dir_jira}}/docker_volumes/truststore/cacerts"
+jira_healthcheck: "https://{{jira_proxy_name}}/status"
+#Jira harbor image
+harbor_url_for_jira: "registry.web.yuma.army.mil/library/jira-software"
+jira_version_tag: "10.3.5_ypg_2025-05-13_19-06-56"
+#Postgres for Jira Harbor Image
+harbor_url_for_postgres: "registry.web.yuma.army.mil/library/postgres"
+postgres_version_tag: "15.11_ypg_2025-03-03_17-44-38"
+
+#Jira Backup directories 
+jira_backup_dir: "{{backup_mount_dir_jira}}/docker_volumes/jira/{{ENV}}/home"
+jira_restore_dir: "{{backup_mount_dir_jira}}/docker_volumes/jira/prod/home"
+postgres_restore_dir: "{{backup_mount_dir_jira}}/docker_volumes/jira/prod/database"
+postgres_backup_dir: "{{backup_mount_dir_jira}}/docker_volumes/jira/{{ENV}}/database"

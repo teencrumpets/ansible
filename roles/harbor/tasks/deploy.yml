@@ -1,0 +1,159 @@
+- name: Checking for existing installations
+  stat:
+    path: '{{ harbor_install_dir }}'
+  register: harbor_installed
+
+- name: Stopping Harbor service ungracefully
+  command:
+    cmd: 'docker compose down'
+    chdir: '{{ harbor_install_dir }}'
+  ignore_errors: true
+  when: harbor_installed.stat.exists
+
+- name: Stopping Harbor service gracefully
+  command:
+    cmd: 'docker compose down'
+    chdir: '{{ harbor_install_dir }}'
+  when: mode in ["update"]
+
+- name: Cleaning Harbor install directory
+  file:
+    path: '{{ harbor_install_dir }}'
+    state: absent
+  when: (harbor_installed.stat.exists) and (mode in ["deploy"]) 
+
+- name: Creating temp directory
+  file:
+    path: '{{ harbor_temp_dir }}'
+    state: directory
+    mode: 0774
+
+- name: Download Harbor installer
+  get_url:
+    url: 'https://github.com/goharbor/harbor/releases/download/v{{ harbor_version }}/harbor-online-installer-v{{ harbor_version }}.tgz'
+    dest: '{{ harbor_temp_dir }}/harbor.tgz'
+    owner: ypgansible
+    group: docker
+    mode: 0774
+
+- name: Extracting installer
+  command:
+    cmd: "tar xzvf harbor.tgz"
+    chdir: '{{ harbor_temp_dir }}'
+
+- name: Removing Harbor installer archive
+  file:
+    path: '{{ harbor_temp_dir }}/harbor.tgz'
+    state: absent
+
+- name: Creating install directory
+  file:
+    path: '{{ harbor_install_dir }}'
+    state: directory
+    mode: 0774
+
+- name: Copying files to install directory
+  copy:
+    src: '{{ harbor_temp_dir }}/harbor/'
+    dest: '{{ harbor_install_dir }}'
+    remote_src: yes
+    mode: 0774
+
+- name: Cleaning temp directory
+  file:
+    path: '{{ harbor_temp_dir }}'
+    state: absent
+
+- name: Reading default Harbor config
+  slurp:
+    src: '{{ harbor_install_dir }}/harbor.yml.tmpl'
+  register: harbor_raw
+
+- name: Parsing Harbor config file
+  set_fact:
+    harbor_config: "{{ harbor_raw.content | b64decode | from_yaml }}"
+
+- name: Removing keys
+  set_fact:
+    harbor_config: '{{ harbor_config | combine({ item.setting : omit }) }}'
+  with_items:
+  - { setting: 'https' }
+
+- name: Updating Harbor config
+  ansible.utils.update_fact:
+    updates:
+    - path: "harbor_config.{{ item.path }}"
+      value: "{{ item.value }}"
+  with_items:
+    - { path: 'hostname', value: '{{ harbor_name }}' }
+    - { path: 'http.port', value: '{{harbor_port}}' }
+    - { path: 'external_url', value: 'https://{{ harbor_name }}' }
+    - { path: 'harbor_admin_password', value: '{{harbor_password}}' }
+    - { path: 'database.password', value: '{{harbor_database_password}}' }
+    - { path: 'data_volume', value: '{{ harbor_install_dir }}/data' }
+    - { path: 'log.location', value: '{{ harbor_install_dir }}/logs' }
+  register: updated_harbor_config
+
+- name: Writing updated Harbor config to formatted yaml (filtering out undefined values)
+  copy:
+    dest: '{{ harbor_install_dir }}/harbor.yml'
+    content: "{{ updated_harbor_config.results[-1].harbor_config | dict2items | selectattr('value', 'defined') | items2dict | to_nice_yaml }}"
+    mode: 0744
+
+- name: Running Harbor prepare script
+  command:
+    cmd: '{{ harbor_install_dir }}/prepare --with-trivy'
+    chdir: '{{ harbor_install_dir }}'
+  when: mode in ["update"]
+
+- name: Running Harbor install script
+  command:
+    cmd: '{{ harbor_install_dir }}/install.sh --with-trivy'
+    chdir: '{{ harbor_install_dir }}'
+  when: mode in ["deploy"]
+
+- name: Post install customizations
+  block:
+  - import_role:
+      name: 'container_health'
+    when: mode in ["deploy"]
+  
+  - name: Stopping Harbor service for post install customizations
+    command:
+      cmd: 'docker compose down'
+      chdir: '{{ harbor_install_dir }}'
+
+  - name: Reading default Harbor docker-compose
+    slurp:
+      src: '{{ harbor_install_dir }}/docker-compose.yml'
+    register: harbor_compose_raw
+
+  - name: Parsing Harbor docker-compose
+    set_fact:
+      harbor_compose: "{{ harbor_compose_raw.content | b64decode | from_yaml }}"
+      reg_env: { 'environment' : { 'REGISTRY_HTTP_RELATIVEURLS' : 'true' } }
+
+  - name: Adding custom options to Harbor docker-compose
+    set_fact:
+      updated_reg_service: "{{ harbor_compose.services.registry | combine(reg_env) }}"
+
+  - name: Updating Harbor docker-compose
+    ansible.utils.update_fact:
+      updates:
+      - path: harbor_compose.services.registry
+        value: '{{ updated_reg_service }}'
+    register: updated_harbor_compose
+
+  - name: Writing updated Harbor docker-compose to formatted yaml (filtering out undefined values)
+    copy:
+      dest: '{{ harbor_install_dir }}/docker-compose.yml'
+      content: "{{ updated_harbor_compose.harbor_compose | dict2items | selectattr('value', 'defined') | items2dict | to_nice_yaml }}"
+      mode: 0744
+
+- name: Copy networks file for Harbor
+  template:
+    src: network.yaml.j2
+    dest: "{{ harbor_install_dir }}/docker-compose.override.yml"
+    owner: ypgansible
+    group: docker
+    mode: 0744

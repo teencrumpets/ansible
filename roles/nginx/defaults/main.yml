@@ -1,0 +1,20 @@
+nginx_name: nginx
+nginx_subnet: 192.168.0.192/26
+harbor_url_for_nginx: registry.web.yuma.army.mil/library/nginx
+nginx_version_tag: 1.27.4_ypg_2025-04-17_19-59-14
+nginx_ports: 443
+nginx_volume: nginx_conf
+cert_volume: nginx_cert
+banner_volume: nginx_html
+compose_path: '/opt/compose/{{ nginx_name }}'
+service_template: 'service.yaml.j2'
+
+nec_svr_ops_dir_nginx: "{{ nec_svr_ops_dir }}/nginx"
+cacerts_dod_usa: "{{ nec_svr_ops_dir_nginx }}/docker_volumes/truststore/cacerts_dod_usa"
+wildcard_cert_path: "{{ nec_svr_ops_dir_nginx }}/nginx/certs/{{ ENV }}/{{ wildcard_cert }}"
+
+ssl_conf_path: '/var/lib/docker/volumes/{{ nginx_volume }}/_data/ssl_conf.d'
+config_path: '/var/lib/docker/volumes/{{ nginx_volume }}/_data/conf.d'
+proxy_conf_path: '/var/lib/docker/volumes/{{ nginx_volume }}/_data/proxy_conf.d'
+ssl_config: '/etc/nginx/ssl_conf.d'
+proxy_config: '/etc/nginx/proxy_conf.d'

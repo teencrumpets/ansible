@@ -1,0 +1,4 @@
+hostname: "{{ HOSTS }}"
+install_nessus: true
+allow_reboot: false
+manage_users_profiles: ''

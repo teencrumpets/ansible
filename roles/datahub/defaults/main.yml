@@ -1,0 +1,23 @@
+#Default Vars
+compose_path: '/opt/compose/{{ datahub_container_name }}'
+datahub_service_template: 'datahub.yaml.j2'
+datahub_ports: 10540
+datahub_subnet: 192.168.0.128/26
+datahub_api_port: 10541
+
+harbor_url_for_datahub: 'registry.web.yuma.army.mil/library/data-hub-web'
+datahub_version_tag: '1.0.56.25210_ypg_2025-07-30_17-00-39'
+datahub_container_name: data-hub-web
+
+harbor_url_for_hangfire: 'registry.web.yuma.army.mil/library/data-hub-hangfire'
+hangfire_version_tag: '1.0.56.25210_ypg_2025-07-30_17-00-58'
+hangfire_container_name: data-hub-hangfire
+
+harbor_url_for_datahub_api: 'registry.web.yuma.army.mil/library/data-hub-api'
+datahub_api_version_tag: '1.0.56.25210_ypg_2025-07-30_18-37-05'
+datahub_api_container_name: 'data-hub-api'
+
+#Share Connection
+SHARE_DATA_HUB: '//ypgrw04xaaa76pn/ypg/DataHub'
+SHARE_DPB: '//ypgrw04xaaa703x/ELC/GCDEDN/EDAC-ICAN'
+SHARE_AI: '//ypgrw04xaaa703x/ai/data'

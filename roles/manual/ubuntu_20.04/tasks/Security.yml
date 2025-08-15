@@ -1,0 +1,184 @@
+- name: Security - Ensure pam_pwquality is installed - V-238221, V-238222, V-238223, V-238224, V-238225, V-238226, V-238227
+  package: 
+    name: libpam-pwquality
+    state: present 
+  when: manage_ubuntu_V_238228
+
+- name: Security - configuring /etc/security/pwquality.conf - V-238221, V-238222, V-238223, V-238224, V-238225, V-238226, V-238227
+  lineinfile:
+    path: '/etc/security/pwquality.conf'
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { line: 'ucredit = -1', regexp: '(?i)^ucredit', managed: "{{ manage_ubuntu_V_238221 }}" }
+    - { line: 'lcredit= -1', regexp: '(?i)^lcredit', managed: "{{ manage_ubuntu_V_238222 }}" }
+    - { line: 'dcredit= -1', regexp: '(?i)^dcredit', managed: "{{ manage_ubuntu_V_238223 }}" }
+    - { line: 'difok= 8', regexp: '(?i)^difok', managed: "{{ manage_ubuntu_V_238224 }}" }
+    - { line: 'minlen= 15', regexp: '(?i)^minlen', managed: "{{ manage_ubuntu_V_238225 }}" }
+    - { line: 'ocredit= -1', regexp: '(?i)^ocredit', managed: "{{ manage_ubuntu_V_238226 }}" }
+    - { line: 'dictcheck= 1', regexp: '(?i)^dictcheck', managed: "{{ manage_ubuntu_V_238227 }}" }
+  when: item.managed
+  
+- name: Security - Verify /etc/security/pwquality.conf - V-238221, V-238222, V-238223, V-238224, V-238225, V-238226, V-238227
+  replace:
+    path: '/etc/security/pwquality.conf'
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '(?i)^ucredit', managed: "{{ manage_ubuntu_V_238221 }}" }
+    - { regexp: '(?i)^lcredit', managed: "{{ manage_ubuntu_V_238222 }}" }
+    - { regexp: '(?i)^dcredit', managed: "{{ manage_ubuntu_V_238223 }}" }
+    - { regexp: '(?i)^difok', managed: "{{ manage_ubuntu_V_238224 }}" }
+    - { regexp: '(?i)^minlen', managed: "{{ manage_ubuntu_V_238225 }}" }
+    - { regexp: '(?i)^ocredit', managed: "{{ manage_ubuntu_V_238226 }}" }
+    - { regexp: '(?i)^dictcheck', managed: "{{ manage_ubuntu_V_238227 }}" }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed
+
+- name: Security - configuring /etc/security/pwquality.conf - V-238228 
+  lineinfile:
+    path: '/etc/security/pwquality.conf'
+    line: 'enforcing = 1'
+    state: present
+    regexp: '(?i)^enforcing'
+  when: manage_ubuntu_V_238228
+
+- name: Security - configuring /etc/pam.d/common-password - V-238228 
+  lineinfile:
+    path: '/etc/pam.d/common-password'
+    regex: '(?i)^password\s+requisite\s+pam_pwquality\.so\s+retry'
+    line: 'password        requisite                       pam_pwquality.so retry=3'
+    state: present
+    insertbefore: '^([^#&^\s])'
+  when: manage_ubuntu_V_238228
+
+- name: Security - Clean up extra entry for pam_pwquality - V-238228 
+  replace:
+    path: '/etc/pam.d/common-password'
+    regexp: '^(?!password\s|^#|^\s).*'
+    replace: ''
+  when: manage_ubuntu_V_238228
+
+- name: Security - Verify security/limits.conf - V-238228 
+  replace:
+    path: "{{item.path}}"
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { path: /etc/security/pwquality.conf, regexp: '(?i)^enforcing' }
+    - { path: '/etc/pam.d/common-password', regexp: '(?i)^\s*password\s*requisite\s*pam_pwquality.so\s*retry' }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_238228
+
+- name: Security - Insert Begin ansible block line to file - V-238235
+  lineinfile:
+    path: '/etc/pam.d/common-auth'
+    create: yes
+    state: present
+    line: '# BEGIN ANSIBLE MANAGED BLOCK'
+    insertafter: '(?:pam_unix\.so|pam_sss\.so)'
+  when: manage_ubuntu_V_238235
+
+- name: Security - Insert End ansible block line to file - V-238235
+  lineinfile:
+    path: '/etc/pam.d/common-auth'
+    state: present
+    line: '# END ANSIBLE MANAGED BLOCK'
+    insertafter: '(?:BEGIN ANSIBLE MANAGED BLOCK|auth\s+sufficient\s+pam_faillock\.so\s+authsucc)'
+  when: manage_ubuntu_V_238235
+
+- name: Security - configuring pam.d/common-auth - V-238235
+  blockinfile:
+    path: '/etc/pam.d/common-auth'
+    state: present 
+    block: |
+      auth     [default=die]  pam_faillock.so authfail
+      auth     sufficient     pam_faillock.so authsucc
+  when: manage_ubuntu_V_238235
+
+- name: Security - Initialize regexp for pam.d/common-auth - V-238235
+  set_fact:
+    regex_for_pam_file: |
+      (?i)^auth\s+\[default=die]\s+pam_faillock\.so\s+authfail\s*
+      auth\s+sufficient\s+pam_faillock\.so\s+authsucc
+  when: manage_ubuntu_V_238235
+
+- name: Security - Verify pam.d/common-auth - V-238235
+  replace:
+    path: '/etc/pam.d/common-auth'
+    regexp: '{{item.regexp}}'
+    replace: ''
+  with_items:
+    - { regexp: '{{regex_for_pam_file}}' }
+    - { regexp: '(?i)^#\s+BEGIN\s+ANSIBLE\s+MANAGED\s+BLOCK' }
+    - { regexp: '(?i)^#\s+END\s+ANSIBLE\s+MANAGED\s+BLOCK' }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_238235
+  
+- name: Security - configuring security/limits.conf - V-238235
+  lineinfile:
+    path: /etc/security/faillock.conf
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { line: 'audit', regexp: '(?i)^audit' }
+    - { line: 'silent', regexp: '(?i)^silent' }
+    - { line: 'deny = 3', regexp: '(?i)^deny' }
+    - { line: 'fail_interval = 900', regexp: '(?i)^fail_interval' }
+    - { line: 'unlock_time = 0', regexp: '(?i)^unlock_time' }
+  when: manage_ubuntu_V_238235 
+
+- name: Security - Verify security/limits.conf - V-238235
+  replace:
+    path: '/etc/security/faillock.conf'
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '(?i)^audit' }
+    - { regexp: '(?i)^silent' }
+    - { regexp: '(?i)^deny' }
+    - { regexp: '(?i)^fail_interval' }
+    - { regexp: '(?i)^unlock_time' }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_238235
+  
+- name: Security - configuring security/limits.conf -V-238323
+  lineinfile:
+    path: /etc/security/limits.conf
+    state: present
+    regexp: '(?i)^\*\s+hard\s+maxlogins'
+    line: '* hard maxlogins 10'
+  when: manage_ubuntu_V_238323
+
+- name: Security - Verify security/limits.conf - V-238323
+  replace:
+    path: '/etc/security/limits.conf'
+    regexp: '(?i)^\*\s+hard\s+maxlogins'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_238323
+     
+- name: Security - password required for all accounts - V-251503
+  shell: awk -F":" '!$2 {print $1}' /etc/shadow
+  register: not_null_user
+  failed_when: "'{{not_null_user.stdout_lines}}' != '[]'"
+  ignore_errors: true
+  changed_when: false
+  when: manage_ubuntu_V_251503

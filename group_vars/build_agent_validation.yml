@@ -1,0 +1,12 @@
+build_agents:
+  - build_agent: 
+    name: Lab1
+    agent_pool: nec_lab_L
+    agent_account: "ado_build_agent"
+  - build_agent: 
+    name: Lab2
+    agent_pool: nec_lab_L
+    agent_account: "ado_build_agent"
+
+use_msodbcsql18: true
+manage_user_profiles: ''

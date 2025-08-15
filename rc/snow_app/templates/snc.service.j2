@@ -1,0 +1,17 @@
+# ServiceNow SystemD start/stop script
+ 
+[Unit]
+Description=ServiceNow Tomcat Container
+After=syslog.target
+ 
+[Service]
+Type=forking
+ExecStart=/glide/nodes/{{snow_db}}/startup.sh
+ExecStop=/glide/nodes/{{snow_db}}/shutdown.sh
+ 
+User=servicenow
+Group=servicenow
+UMask=0007
+ 
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,39 @@
+- name: Create Direcory for NFS Share
+  file:
+    state: directory
+    path: "{{docker_nfs_share}}"
+    owner: ypgansible
+    group: root
+    mode: '0774'
+
+- name: Mounting nfs_share
+  mount:
+    src: "{{ nfs_share }}"
+    path: "{{docker_nfs_share}}"
+    state: mounted
+    fstype: nfs
+  changed_when: false
+
+- name: Create Direcory for Trivy Vuln DB
+  file:
+    state: directory
+    path: "{{trivy_vuln_db_path}}"
+    owner: ypgansible
+    group: root
+    mode: '0774'
+
+- name: Update Trivy Vuln DB
+  shell: 'trivy image --download-db-only --cache-dir {{trivy_vuln_db_path}}'
+  changed_when: false
+    
+- name: Update Trivy Java DB
+  shell: 'trivy image --download-java-db-only --cache-dir {{trivy_vuln_db_path}}'
+  changed_when: false
+
+- name: Cleaning up nfs_share mount
+  mount:
+    src: "{{ nfs_share }}"
+    path: "{{docker_nfs_share}}"
+    state: absent
+    fstype: nfs
+  changed_when: false

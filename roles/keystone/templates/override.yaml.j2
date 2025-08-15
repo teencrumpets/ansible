@@ -1,0 +1,80 @@
+services:
+  nginx:
+    container_name: "{{ nginx_container_name }}"
+    image: "{{ harbor_url_for_keystone_frontend }}:{{ keystone_frontend_version_tag }}"
+    ports:
+      - ${NGINX_PORT}:443
+      - "{{ keystone_ports }}:80"
+  backend:
+    container_name: "{{ backend_container_name }}"
+    image: "{{ harbor_url_for_keystone_backend }}:{{ keystone_backend_version_tag }}"
+    environment:
+      AUTH_M2M_ALLOW: "False" 
+      AUTH_OIDC_DISCOVERY_URL: "{{keystone_auth_oidc}}" 
+      AUTH_OIDC_CLIENT_ID: "keystone" 
+      REQUESTS_CA_BUNDLE: "/etc/ssl/ca.pem" 
+    volumes:
+      - ${HOST_DATA_DIRECTORY}:${CONTAINER_DATA_DIRECTORY}
+      - "./mtls/server-key.pem:{{ mtls_server_key }}"
+      - "./mtls/server.pem:{{ mtls_server }}"
+      - "./mtls/ca.pem:{{ mtls_ca }}"
+
+  db:
+    container_name: "{{ backend_db_container_name }}"
+    image: "{{ harbor_url_for_keystone_postgresql }}:{{ keystone_postgresql_version_tag }}"
+  
+  keycloak-db:
+    profiles: ["never"]
+    container_name: "{{ keycloak_db_container_name }}"
+    image: "{{ harbor_url_for_keystone_postgresql }}:{{ keystone_postgresql_version_tag }}"
+
+  celery-db:
+    container_name: "{{ celery_db_container_name }}"
+    image: "{{ harbor_url_for_keystone_postgresql }}:{{ keystone_postgresql_version_tag }}"
+
+  rabbitmq:
+    container_name: "{{ rabbitmq_container_name }}"
+    image: "{{ harbor_url_for_keystone_rabbitmq }}:{{ keystone_rabbitmq_version_tag }}"
+
+  worker-common:
+    container_name: "{{ worker_common_container_name }}"
+    image: "{{ harbor_url_for_keystone_workercommon }}:{{ keystone_workercommon_version_tag }}"
+    volumes:
+      - "./mtls/common-client.pem:{{ mtls_client }}"
+      - "./mtls/common-client-key.pem:{{ mtls_client_key }}"
+      - "./mtls/ca.pem:{{ mtls_ca }}"
+
+  worker-ml:
+    profiles: ["physical"]
+    container_name: "{{ worker_ml_container_name }}"
+    image: "{{ harbor_url_for_keystone_workerml }}:{{ keystone_workerml_version_tag }}"
+    volumes:
+      - "./mtls/ml-client.pem:{{ mtls_client }}"
+      - "./mtls/ml-client-key.pem:{{ mtls_client_key }}"
+      - "./mtls/ca.pem:{{ mtls_ca }}"
+
+  file-share-mgr-service:
+    container_name: "{{ filesharemgr_container_name }}"
+    image: "{{ harbor_url_for_keystone_filesharemgr }}:{{ keystone_filesharemgr_version_tag }}"
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - cifs_volume_keystone:/opt/python-environment/file-share
+      - "./mtls/file-client.pem:{{ mtls_client }}"
+      - "./mtls/file-client-key.pem:{{ mtls_client_key }}"
+      - "./mtls/ca.pem:{{ mtls_ca }}"
+  
+  keycloak:
+    profiles: ["never"]
+    container_name: "{{ keycloak_container_name }}"
+    image: "{{ harbor_url_for_keystone_keycloak }}:{{ keystone_keycloak_version_tag }}"
+
+
+volumes: 
+  cifs_volume_keystone:
+    driver: local
+    driver_opts:
+      type: cifs 
+      device: "{{ Keystone_windows_share }}"
+      o: "username={{ keystone_fileshare_user }},password={{ keystone_keytab_pw }},uid=1021,gid=100,vers=3.0"

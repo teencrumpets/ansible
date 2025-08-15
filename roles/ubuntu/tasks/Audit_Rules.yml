@@ -1,0 +1,184 @@
+- name: | 
+    Audit Rules - Configuring /etc/audit/rules.d/stig.rules - V-270684, V-270685, V-270686, V-270687, 
+    V-270688, V-270689, V-270715, V-270740, V-270778, V-270779, V-270780, V-270781, V-270782, V-270783, 
+    V-270784, V-270785, V-270786, V-270787, V-270788, V-270789, V-270790, V-270791, V-270792, V-270793, 
+    V-270794, V-270795, V-270796, V-270797, V-270798, V-270799, V-270800, V-270801, V-270802, V-270803, 
+    V-270804, V-270805, V-270806, V-270807,  V-270808, V-270809, V-270810, V-270811, V-270812, V-270813, 
+    V-270814, V-270815
+  lineinfile:
+    path: /etc/audit/rules.d/stig.rules
+    line: "{{ item.line }}"
+    state: present
+    create: yes
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { line: '-w /etc/passwd -p wa -k usergroup_modification', regexp: '(?i)^-w\s+\/etc\/passwd', managed: "{{ manage_ubuntu_V_270684 }}" }
+    - { line: '-w /etc/group -p wa -k usergroup_modification', regexp: '(?i)^-w\s+\/etc\/group', managed: "{{ manage_ubuntu_V_270685 }}" }
+    - { line: '-w /etc/shadow -p wa -k usergroup_modification', regexp: '(?i)^-w\s+\/etc\/shadow', managed: "{{ manage_ubuntu_V_270686 }}" }
+    - { line: '-w /etc/gshadow -p wa -k usergroup_modification', regexp: '(?i)^-w\s+\/etc\/gshadow', managed: "{{ manage_ubuntu_V_270687 }}" }
+    - { line: '-w /etc/security/opasswd -p wa -k usergroup_modification', regexp: '(?i)^-w\s+\/etc\/security\/opasswd', managed: "{{ manage_ubuntu_V_270688 }}" }
+    - { line: '-a always,exit -F arch=b64 -S execve -C uid!=euid -F euid=0 -F key=execpriv', regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+execve\s+-C\s+uid!=euid\s+-F\s+euid=0\s+-F\s+key=execpriv', managed: "{{ manage_ubuntu_V_270689 }}" }
+    - { line: '-a always,exit -F arch=b64 -S execve -C gid!=egid -F egid=0 -F key=execpriv', regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+execve\s+-C\s+gid!=egid\s+-F\s+egid=0\s+-F\s+key=execpriv', managed: "{{ manage_ubuntu_V_270689 }}" }
+    - { line: '-a always,exit -F arch=b32 -S execve -C uid!=euid -F euid=0 -F key=execpriv', regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+execve\s+-C\s+uid!=euid\s+-F\s+euid=0\s+-F\s+key=execpriv', managed: "{{ manage_ubuntu_V_270689 }}" }
+    - { line: '-a always,exit -F arch=b32 -S execve -C gid!=egid -F egid=0 -F key=execpriv', regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+execve\s+-C\s+gid!=egid\s+-F\s+egid=0\s+-F\s+key=execpriv', managed: "{{ manage_ubuntu_V_270689 }}" }
+    - { line: '-w /var/log/journal -p wa -k systemd_journal', regexp: '(?i)^-w\s+\/var\/log\/systemd_journal', managed: "{{ manage_ubuntu_V_270715 }}" }
+    - { line: '-w /var/log/sudo.log -p wa -k maintenance', regexp: '(?i)^-w\s+\/var\/log\/sudo.log', managed: "{{ manage_ubuntu_V_270740 }}" }
+    - { line: '-a always,exit -F path=/bin/su -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-priv_change', regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/bin\/su', managed: "{{ manage_ubuntu_V_270778 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/chfn -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-chfn', regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/chfn', managed: "{{ manage_ubuntu_V_270779 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/mount -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-mount', regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/mount', managed: "{{ manage_ubuntu_V_270780 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/umount -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-umount', regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/umount', managed: "{{ manage_ubuntu_V_270781 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/ssh-agent -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-ssh', regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/ssh-agent', managed: "{{ manage_ubuntu_V_270782 }}" }
+    - { line: '-a always,exit -F path=/usr/lib/openssh/ssh-keysign -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-ssh', regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/lib\/openssh\/ssh-keysign', managed: "{{ manage_ubuntu_V_270783 }}" }
+    - { line: '-a always,exit -F arch=b32 -S setxattr,fsetxattr,lsetxattr,removexattr,fremovexattr,lremovexattr -F auid>=1000 -F auid!=-1 -k perm_mod', regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+setxattr,fsetxattr,lsetxattr,removexattr,fremovexattr,lremovexattr\s+-F\s+auid>=1000\s+-F\s+auid!=-1\s+-k\s+perm_mod', managed: "{{ manage_ubuntu_V_270784 }}" }
+    - { line: '-a always,exit -F arch=b32 -S setxattr,fsetxattr,lsetxattr,removexattr,fremovexattr,lremovexattr -F auid=0 -k perm_mod', regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+setxattr,fsetxattr,lsetxattr,removexattr,fremovexattr,lremovexattr\s+-F\s+auid=0\s+-k\s+perm_mod', managed: "{{ manage_ubuntu_V_270784 }}" }
+    - { line: '-a always,exit -F arch=b64 -S setxattr,fsetxattr,lsetxattr,removexattr,fremovexattr,lremovexattr -F auid>=1000 -F auid!=-1 -k perm_mod', regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+setxattr,fsetxattr,lsetxattr,removexattr,fremovexattr,lremovexattr\s+-F\s+auid>=1000\s+-F\s+auid!=-1\s+-k\s+perm_mod', managed: "{{ manage_ubuntu_V_270784 }}" }
+    - { line: '-a always,exit -F arch=b64 -S setxattr,fsetxattr,lsetxattr,removexattr,fremovexattr,lremovexattr -F auid=0 -k perm_mod', regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+setxattr,fsetxattr,lsetxattr,removexattr,fremovexattr,lremovexattr\s+-F\s+auid=0\s+-k\s+perm_mod', managed: "{{ manage_ubuntu_V_270784 }}" }
+    - { line: '-a always,exit -F arch=b32 -S chown,fchown,fchownat,lchown -F auid>=1000 -F auid!=-1 -k perm_chng', regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+chown,fchown,fchownat,lchown', managed: "{{ manage_ubuntu_V_270785 }}" }
+    - { line: '-a always,exit -F arch=b64 -S chown,fchown,fchownat,lchown -F auid>=1000 -F auid!=-1 -k perm_chng', regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+chown,fchown,fchownat,lchown', managed: "{{ manage_ubuntu_V_270785 }}" }
+    - { line: '-a always,exit -F arch=b32 -S chmod,fchmod,fchmodat -F auid>=1000 -F auid!=-1 -k perm_chng', regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+chmod,fchmod,fchmodat', managed: "{{ manage_ubuntu_V_270786 }}" }
+    - { line: '-a always,exit -F arch=b64 -S chmod,fchmod,fchmodat -F auid>=1000 -F auid!=-1 -k perm_chng', regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+chmod,fchmod,fchmodat', managed: "{{ manage_ubuntu_V_270786 }}" }
+    - { line: '-a always,exit -F arch=b32 -S creat,open,openat,open_by_handle_at,truncate,ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=-1 -k perm_access', regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+creat,open,openat,open_by_handle_at,truncate,ftruncate\s+-F\s+exit=-EPERM\s+-F\s+auid>=1000\s+-F\s+auid!=-1\s+-k\s+perm_access', managed: "{{ manage_ubuntu_V_270787 }}" }
+    - { line: '-a always,exit -F arch=b32 -S creat,open,openat,open_by_handle_at,truncate,ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=-1 -k perm_access', regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+creat,open,openat,open_by_handle_at,truncate,ftruncate\s+-F\s+exit=-EACCES\s+-F\s+auid>=1000\s+-F\s+auid!=-1\s+-k\s+perm_access', managed: "{{ manage_ubuntu_V_270787 }}" }
+    - { line: '-a always,exit -F arch=b64 -S creat,open,openat,open_by_handle_at,truncate,ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=-1 -k perm_access', regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+creat,open,openat,open_by_handle_at,truncate,ftruncate\s+-F\s+exit=-EPERM\s+-F\s+auid>=1000\s+-F\s+auid!=-1\s+-k\s+perm_access', managed: "{{ manage_ubuntu_V_270787 }}" }
+    - { line: '-a always,exit -F arch=b64 -S creat,open,openat,open_by_handle_at,truncate,ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=-1 -k perm_access', regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+creat,open,openat,open_by_handle_at,truncate,ftruncate\s+-F\s+exit=-EACCES\s+-F\s+auid>=1000\s+-F\s+auid!=-1\s+-k\s+perm_access', managed: "{{ manage_ubuntu_V_270787 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/sudo -F perm=x -F auid>=1000 -F auid!=-1 -k priv_cmd', regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/sudo\s+-F', managed: "{{ manage_ubuntu_V_270788 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/sudoedit -F perm=x -F auid>=1000 -F auid!=-1 -k priv_cmd', regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/sudoedit', managed: "{{ manage_ubuntu_V_270789 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/chsh -F perm=x -F auid>=1000 -F auid!=-1 -k priv_cmd', regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/chsh', managed: "{{ manage_ubuntu_V_270790 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/newgrp -F perm=x -F auid>=1000 -F auid!=-1 -k priv_cmd', regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/newgrp', managed: "{{ manage_ubuntu_V_270791 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/chcon -F perm=x -F auid>=1000 -F auid!=-1 -k perm_chng', regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/chcon', managed: "{{ manage_ubuntu_V_270792 }}" }
+    - { line: '-a always,exit -F path=/sbin/apparmor_parser -F perm=x -F auid>=1000 -F auid!=-1 -k perm_chng', regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/sbin\/apparmor_parser', managed: "{{ manage_ubuntu_V_270793 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/setfacl -F perm=x -F auid>=1000 -F auid!=-1 -k perm_chng', regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/setfacl', managed: "{{ manage_ubuntu_V_270794 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/chacl -F perm=x -F auid>=1000 -F auid!=-1 -k perm_chng', regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/chacl', managed: "{{ manage_ubuntu_V_270795 }}" }
+    - { line: '-w /var/log/faillog -p wa -k logins', regexp: '(?i)^-w\s+\/var\/log\/faillog', managed: "{{ manage_ubuntu_V_270796 }}" }
+    - { line: '-w /var/log/lastlog -p wa -k logins', regexp: '(?i)^-w\s+\/var\/log\/lastlog', managed: "{{ manage_ubuntu_V_270797 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/passwd -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-passwd', regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/passwd', managed: "{{ manage_ubuntu_V_270798 }}" }
+    - { line: '-a always,exit -F path=/sbin/unix_update -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-unix-update', regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/sbin\/unix_update', managed: "{{ manage_ubuntu_V_270799 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/gpasswd -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-gpasswd', regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/gpasswd', managed: "{{ manage_ubuntu_V_270800 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/chage -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-chage', regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/chage', managed: "{{ manage_ubuntu_V_270801 }}" }
+    - { line: '-a always,exit -F path=/usr/sbin/usermod -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-usermod', regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/sbin\/usermod', managed: "{{ manage_ubuntu_V_270802 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/crontab -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-crontab', regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/crontab', managed: "{{ manage_ubuntu_V_270803 }}" }
+    - { line: '-a always,exit -F path=/usr/sbin/pam_timestamp_check -F perm=x -F auid>=1000 -F auid!=-1 -k privileged-pam_timestamp_check', regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/sbin\/pam_timestamp_check', managed: "{{ manage_ubuntu_V_270804 }}" }
+    - { line: '-a always,exit -F arch=b32 -S init_module,finit_module -F auid>=1000 -F auid!=-1 -k module_chng', regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+init_module,finit_module', managed: "{{ manage_ubuntu_V_270805 }}" }
+    - { line: '-a always,exit -F arch=b64 -S init_module,finit_module -F auid>=1000 -F auid!=-1 -k module_chng', regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+init_module,finit_module', managed: "{{ manage_ubuntu_V_270805 }}" }
+    - { line: '-a always,exit -F arch=b32 -S delete_module -F auid>=1000 -F auid!=-1 -k module_chng', regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+delete_module', managed: "{{ manage_ubuntu_V_270806 }}" }
+    - { line: '-a always,exit -F arch=b64 -S delete_module -F auid>=1000 -F auid!=-1 -k module_chng', regexp: '(?i)^-a\s+always,exit-F\s+arch=b64\s+-S\s+delete_module', managed: "{{ manage_ubuntu_V_270806 }}" }
+    - { line: '-w /etc/sudoers -p wa -k privilege_modification', regexp: '(?i)^-w\s+\/etc\/sudoers\s', managed: "{{ manage_ubuntu_V_270807 }}" }
+    - { line: '-w /etc/sudoers.d -p wa -k privilege_modification', regexp: '(?i)^-w\s+\/etc\/sudoers.d', managed: "{{ manage_ubuntu_V_270808 }}" }
+    - { line: '-a always,exit -F arch=b64 -S unlink,unlinkat,rename,renameat,rmdir -F auid>=1000 -F auid!=-1 -k delete', regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+unlink,unlinkat,rename,renameat,rmdir', managed: "{{ manage_ubuntu_V_270809 }}" }
+    - { line: '-a always,exit -F arch=b32 -S unlink,unlinkat,rename,renameat,rmdir -F auid>=1000 -F auid!=-1 -k delete', regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+unlink,unlinkat,rename,renameat,rmdir', managed: "{{ manage_ubuntu_V_270809 }}" }
+    - { line: '-w /var/log/wtmp -p wa -k logins', regexp: '(?i)^-w\s+\/var\/log\/wtmp', managed: "{{ manage_ubuntu_V_270810 }}" }
+    - { line: '-w /var/run/utmp -p wa -k logins', regexp: '(?i)^-w\s+\/var\/run\/utmp', managed: "{{ manage_ubuntu_V_270811 }}" }
+    - { line: '-w /var/log/btmp -p wa -k logins', regexp: '(?i)^-w\s+\/var\/log\/btmp', managed: "{{ manage_ubuntu_V_270812 }}" }
+    - { line: '-w /sbin/modprobe -p x -k modules', regexp: '(?i)^-w\s+\/sbin\/modprobe', managed: "{{ manage_ubuntu_V_270813 }}" }
+    - { line: '-w /bin/kmod -p x -k modules', regexp: '(?i)^-w\s+\/bin\/kmod', managed: "{{ manage_ubuntu_V_270814 }}" }
+    - { line: '-w /usr/sbin/fdisk -p x -k fdisk', regexp: '(?i)^-w\s+\/usr\/sbin\/fdisk', managed: "{{ manage_ubuntu_V_270815 }}" }
+  notify: Reload augenrules
+  when: item.managed
+  
+- name: Audit Rules - Verify the the configuration of /etc/audit/rules.d/stig.rules - V-270684, V-270685, V-270686, V-270687, 
+    V-270688, V-270689, V-270715, V-270740, V-270778, V-270779, V-270780, V-270781, V-270782, V-270783, 
+    V-270784, V-270785, V-270786, V-270787, V-270788, V-270789, V-270790, V-270791, V-270792, V-270793, 
+    V-270794, V-270795, V-270796, V-270797, V-270798, V-270799, V-270800, V-270801, V-270802, V-270803, 
+    V-270804, V-270805, V-270806, V-270807,  V-270808, V-270809, V-270810, V-270811, V-270812, V-270813, 
+    V-270814, V-270815
+  replace:
+    path: /etc/audit/rules.d/stig.rules
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '(?i)^-w\s+\/etc\/passwd', managed: "{{ manage_ubuntu_V_270684 }}" }
+    - { regexp: '(?i)^-w\s+\/etc\/group', managed: "{{ manage_ubuntu_V_270685 }}" }
+    - { regexp: '(?i)^-w\s+\/etc\/shadow', managed: "{{ manage_ubuntu_V_270686 }}" }
+    - { regexp: '(?i)^-w\s+\/etc\/gshadow', managed: "{{ manage_ubuntu_V_270687 }}" }
+    - { regexp: '(?i)^-w\s+\/etc\/security\/opasswd', managed: "{{ manage_ubuntu_V_270688 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+execve\s+-C\s+uid!=euid\s+-F\s+euid=0\s+-F\s+key=execpriv', managed: "{{ manage_ubuntu_V_270689 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+execve\s+-C\s+gid!=egid\s+-F\s+egid=0\s+-F\s+key=execpriv', managed: "{{ manage_ubuntu_V_270689 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+execve\s+-C\s+uid!=euid\s+-F\s+euid=0\s+-F\s+key=execpriv', managed: "{{ manage_ubuntu_V_270689 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+execve\s+-C\s+gid!=egid\s+-F\s+egid=0\s+-F\s+key=execpriv', managed: "{{ manage_ubuntu_V_270689 }}" }
+    - { regexp: '(?i)^-w\s+\/var\/log\/journal', managed: "{{ manage_ubuntu_V_270715 }}" }
+    - { regexp: '(?i)^-w\s+\/var\/log\/sudo.log', managed: "{{ manage_ubuntu_V_270740 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/bin\/su', managed: "{{ manage_ubuntu_V_270778 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/chfn', managed: "{{ manage_ubuntu_V_270779 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/mount', managed: "{{ manage_ubuntu_V_270780 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/umount', managed: "{{ manage_ubuntu_V_270781 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/ssh-agent', managed: "{{ manage_ubuntu_V_270782 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/lib\/openssh\/ssh-keysign', managed: "{{ manage_ubuntu_V_270783 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+setxattr,fsetxattr,lsetxattr,removexattr,fremovexattr,lremovexattr\s+-F\s+auid>=1000\s+-F\s+auid!=-1\s+-k\s+perm_mod', managed: "{{ manage_ubuntu_V_270784 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+setxattr,fsetxattr,lsetxattr,removexattr,fremovexattr,lremovexattr\s+-F\s+auid=0\s+-k\s+perm_mod', managed: "{{ manage_ubuntu_V_270784 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+setxattr,fsetxattr,lsetxattr,removexattr,fremovexattr,lremovexattr\s+-F\s+auid>=1000\s+-F\s+auid!=-1\s+-k\s+perm_mod', managed: "{{ manage_ubuntu_V_270784 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+setxattr,fsetxattr,lsetxattr,removexattr,fremovexattr,lremovexattr\s+-F\s+auid=0\s+-k\s+perm_mod', managed: "{{ manage_ubuntu_V_270784 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+chown,fchown,fchownat,lchown', managed: "{{ manage_ubuntu_V_270785 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+chown,fchown,fchownat,lchown', managed: "{{ manage_ubuntu_V_270785 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+chmod,fchmod,fchmodat', managed: "{{ manage_ubuntu_V_270786 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+chmod,fchmod,fchmodat', managed: "{{ manage_ubuntu_V_270786 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+creat,open,openat,open_by_handle_at,truncate,ftruncate\s+-F\s+exit=-EPERM\s+-F\s+auid>=1000\s+-F\s+auid!=-1\s+-k\s+perm_access', managed: "{{ manage_ubuntu_V_270787 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+creat,open,openat,open_by_handle_at,truncate,ftruncate\s+-F\s+exit=-EACCES\s+-F\s+auid>=1000\s+-F\s+auid!=-1\s+-k\s+perm_access', managed: "{{ manage_ubuntu_V_270787 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+creat,open,openat,open_by_handle_at,truncate,ftruncate\s+-F\s+exit=-EPERM\s+-F\s+auid>=1000\s+-F\s+auid!=-1\s+-k\s+perm_access', managed: "{{ manage_ubuntu_V_270787 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+creat,open,openat,open_by_handle_at,truncate,ftruncate\s+-F\s+exit=-EACCES\s+-F\s+auid>=1000\s+-F\s+auid!=-1\s+-k\s+perm_access', managed: "{{ manage_ubuntu_V_270787 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/sudo\s+-F', managed: "{{ manage_ubuntu_V_270788 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/sudoedit', managed: "{{ manage_ubuntu_V_270789 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/chsh', managed: "{{ manage_ubuntu_V_270790 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/newgrp', managed: "{{ manage_ubuntu_V_270791 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/chcon', managed: "{{ manage_ubuntu_V_270792 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/sbin\/apparmor_parser', managed: "{{ manage_ubuntu_V_270793 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/setfacl', managed: "{{ manage_ubuntu_V_270794 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/chacl', managed: "{{ manage_ubuntu_V_270795 }}" }
+    - { regexp: '(?i)^-w\s+\/var\/log\/faillog', managed: "{{ manage_ubuntu_V_270796 }}" }
+    - { regexp: '(?i)^-w\s+\/var\/log\/lastlog', managed: "{{ manage_ubuntu_V_270797 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/passwd', managed: "{{ manage_ubuntu_V_270798 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/sbin\/unix_update', managed: "{{ manage_ubuntu_V_270799 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/gpasswd', managed: "{{ manage_ubuntu_V_270800 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/chage', managed: "{{ manage_ubuntu_V_270801 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/sbin\/usermod', managed: "{{ manage_ubuntu_V_270802 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/bin\/crontab', managed: "{{ manage_ubuntu_V_270803 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+path=\/usr\/sbin\/pam_timestamp_check', managed: "{{ manage_ubuntu_V_270804 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+init_module,finit_module', managed: "{{ manage_ubuntu_V_270805 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+init_module,finit_module', managed: "{{ manage_ubuntu_V_270805 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+delete_module', managed: "{{ manage_ubuntu_V_270806 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+delete_module', managed: "{{ manage_ubuntu_V_270806 }}" }
+    - { regexp: '(?i)^-w\s+\/etc\/sudoers\s', managed: "{{ manage_ubuntu_V_270807 }}" }
+    - { regexp: '(?i)^-w\s+\/etc\/sudoers.d', managed: "{{ manage_ubuntu_V_270808 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+unlink,unlinkat,rename,renameat,rmdir', managed: "{{ manage_ubuntu_V_270809 }}" }
+    - { regexp: '(?i)^-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+unlink,unlinkat,rename,renameat,rmdir', managed: "{{ manage_ubuntu_V_270809 }}" }
+    - { regexp: '(?i)^-w\s+\/var\/log\/wtmp', managed: "{{ manage_ubuntu_V_270810 }}" }
+    - { regexp: '(?i)^-w\s+\/var\/run\/utmp', managed: "{{ manage_ubuntu_V_270811 }}" }
+    - { regexp: '(?i)^-w\s+\/var\/log\/btmp', managed: "{{ manage_ubuntu_V_270812 }}" }
+    - { regexp: '(?i)^-w\s+\/sbin\/modprobe', managed: "{{ manage_ubuntu_V_270813 }}" }
+    - { regexp: '(?i)^-w\s+\/bin\/kmod', managed: "{{ manage_ubuntu_V_270814 }}" }
+    - { regexp: '(?i)^-w\s+\/usr\/sbin\/fdisk', managed: "{{ manage_ubuntu_V_270815 }}" }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed
+  
+- name: Audit Rules - Get list of files - V-270775
+  find:
+    paths: /etc/audit/
+    recurse: yes
+    file_type: file
+  register: audit_configuration_files
+  when: manage_ubuntu_V_270775
+
+- name: Audit Rules - Set audit configuration permissions - V-270775
+  file:
+    mode: 0640
+    dest: '{{ item.path }}'
+  loop: '{{ audit_configuration_files.files }}'
+  when: manage_ubuntu_V_270775
+
+- name: Audit Rules - Audit configuration owner - V-270776
+  file:
+    path: /etc/audit/
+    state: directory
+    recurse: true
+    owner: root
+  when: manage_ubuntu_V_270776
+  
+- name: Audit Rules - Audit configuration group - V-270777
+  file:
+    path: /etc/audit/
+    state: directory
+    recurse: true
+    group: root
+  when: manage_ubuntu_V_270777

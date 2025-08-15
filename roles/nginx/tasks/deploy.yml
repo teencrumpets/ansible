@@ -1,0 +1,46 @@
+- name: Create NFS mount directory for binary data
+  file:
+    state: directory
+    path: '{{ nec_svr_ops_dir_nginx }}'
+    owner: ypgansible
+    group: docker
+    mode: 0770
+    
+- name: Mounting NFS share
+  mount:
+    src: "{{ nfs_share }}"
+    path: "{{ nec_svr_ops_dir_nginx }}"
+    state: mounted
+    fstype: nfs
+  changed_when: false
+
+- name: Create Nginx compose file
+  template:
+    src: compose.yaml.j2
+    dest: "{{ compose_path }}/compose.yaml"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Create Nginx service
+  command:
+    cmd: 'docker compose up -d --no-start'
+    chdir: "{{ compose_path }}"
+  changed_when: false
+
+- name: Copy wildcard cert file
+  copy:
+    src: "{{ wildcard_cert_path }}"
+    dest: "/var/lib/docker/volumes/{{ cert_volume }}/_data/{{ wildcard_cert }}"
+    remote_src: true
+    owner: 2002
+    group: 2002
+    mode: 0774
+
+- name: Copy wildcard key file
+  copy:
+    content: "{{ wildcard_key }}"
+    dest: "/var/lib/docker/volumes/{{ cert_volume }}/_data/{{ wildcard_key_name }}"
+    owner: 2002
+    group: 2002
+    mode: 0774

@@ -1,0 +1,34 @@
+- name: Update Grub
+  command: update-grub
+
+- name: Restart RSYSLOG
+  service:
+    name: rsyslog
+    state: restarted
+
+- name: Restart AuditD
+  service:
+    name: auditd
+    state: restarted
+
+- name: Restart SSHD
+  service:
+    name: ssh
+    state: restarted
+
+- name: Reload augenrules
+  command: augenrules --load
+
+- name: Restart Chrony
+  service:
+    name: chrony
+    state: restarted 
+
+- name: Reload System Config Files
+  command: sysctl --system
+
+- name: Reload Daemon
+  command: systemctl daemon-reload
+
+- name: Reload SSHD
+  command: systemctl restart sshd

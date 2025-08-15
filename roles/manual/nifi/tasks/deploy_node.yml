@@ -1,0 +1,263 @@
+- name: Mounting nfs backup share
+  mount:
+    src: "{{ nfs_share }}"
+    path: "{{ nifi_mount_dir }}"
+    state: mounted
+    fstype: nfs
+  changed_when: false
+
+- name: Ensure cluster service is down
+  command:
+    cmd: 'docker compose down'
+    chdir: "/opt/compose/{{ item.nifi_node_dir }}"
+  changed_when: false
+  with_items: "{{ nifi_nodes }}"
+  when: ((nifi_node == item.keys() | list | first) and (mode == "restore"))
+
+- name: Ensuring any old home volumes are gone
+  command:
+    cmd: 'docker volume rm nifi-data nifi-database nifi-flow nifi-content nifi-prov nifi-state nifi-logs nifi-config nifi-store'
+    chdir: "/opt/compose/{{ item.nifi_node_dir }}"
+  failed_when: false
+  changed_when: false
+  with_items: "{{ nifi_nodes }}"
+  when: ((nifi_node == item.keys() | list | first) and (mode == "restore"))
+
+- name: Create nifi cluster service but not start
+  shell:
+    cmd: 'docker compose up --no-start'
+    chdir: '/opt/compose/{{ item.nifi_node_dir }}'
+  changed_when: false
+  with_items: "{{ nifi_nodes }}"
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))
+
+- name: Check for keystore definition
+  set_fact:
+    use_default_keystore: "{{ not keystore is defined }}"
+
+- name: Setting keystore source (use default if undefined)
+  loop: "{{ nifi_nodes }}"
+  set_fact:
+    keystore: "{{ item.nifi_keystore if use_default_keystore else keystore }}"
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))
+
+- name: Copy keystore file
+  copy:
+    src: '{{ keystore }}'
+    dest: "/var/lib/docker/volumes/{{ item.nifi_store }}/_data/keystore.p12"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+  with_items: "{{ nifi_nodes }}"
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))
+
+- name: Copy truststore file
+  copy:
+    src: "{{ nifi_binary }}truststore.jks"
+    dest: "/var/lib/docker/volumes/{{ item.nifi_store }}/_data/truststore.jks"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+    remote_src: yes
+  with_items: "{{ nifi_nodes }}"
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))
+
+- name: Copy authorizers.xml file
+  copy:
+    src: "{{ nifi_binary }}nifi_authorizers.xml"
+    dest: "/var/lib/docker/volumes/{{ item.nifi_configuration }}/_data/authorizers.xml"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+    remote_src: yes
+  with_items: "{{ nifi_nodes }}"
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))
+
+- name: Configure nifi properties keystore path
+  lineinfile:
+    path: /var/lib/docker/volumes/{{ item.nifi_configuration }}/_data/nifi.properties
+    line: 'nifi.security.keystore=/nifi-store/keystore.p12'
+    regexp: '^(?i)nifi\.security\.keystore='
+    state: present
+  with_items: "{{ nifi_nodes}}"
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))
+
+- name: Configure nifi properties keystore type
+  lineinfile:
+    path: /var/lib/docker/volumes/{{ item.nifi_configuration }}/_data/nifi.properties
+    line: 'nifi.security.keystoreType=PKCS12'
+    regexp: '^(?i)nifi\.security\.keystoreType='
+    state: present
+  with_items: "{{ nifi_nodes}}"
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))
+
+- name: Configure nifi properties keystore passwd
+  lineinfile:
+    path: /var/lib/docker/volumes/{{ item.nifi_configuration }}/_data/nifi.properties
+    line: 'nifi.security.keystorePasswd={{ item.nifi_keystore_pw }}'
+    regexp: '^(?i)nifi\.security\.keystorePasswd='
+    state: present
+  with_items: "{{ nifi_nodes}}"
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))
+
+- name: Configure nifi properties key passwd
+  lineinfile:
+    path: /var/lib/docker/volumes/{{ item.nifi_configuration }}/_data/nifi.properties
+    line: 'nifi.security.keyPasswd={{ item.nifi_privkey_pw }}'
+    regexp: '^(?i)nifi\.security\.keyPasswd='
+    state: present
+  with_items: "{{ nifi_nodes}}"
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))
+
+- name: Configure nifi properties truststore path
+  lineinfile:
+    path: /var/lib/docker/volumes/{{ item.nifi_configuration }}/_data/nifi.properties
+    line: 'nifi.security.truststore=/nifi-store/truststore.jks'
+    regexp: '^(?i)nifi\.security\.truststore='
+    state: present
+  with_items: "{{ nifi_nodes}}"
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))
+
+- name: Configure nifi properties truststore type
+  lineinfile:
+    path: /var/lib/docker/volumes/{{ item.nifi_configuration }}/_data/nifi.properties
+    line: 'nifi.security.truststoreType=JKS'
+    regexp: '^(?i)nifi\.security\.truststoreType='
+    state: present
+  with_items: "{{ nifi_nodes}}"
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))
+
+- name: Configure nifi properties truststore passwd
+  lineinfile:
+    path: /var/lib/docker/volumes/{{ item.nifi_configuration }}/_data/nifi.properties
+    line: 'nifi.security.truststorePasswd={{ trustStorePass }}'
+    regexp: '^(?i)nifi\.security\.truststorePasswd='
+    state: present
+  with_items: "{{ nifi_nodes}}"
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))
+
+- name: Configure nifi properties authorizer type
+  lineinfile:
+    path: /var/lib/docker/volumes/{{ item.nifi_configuration }}/_data/nifi.properties
+    line: 'nifi.security.user.authorizer=managed-authorizer'
+    regexp: '^(?i)nifi\.security\.user\.authorizer='
+    state: present
+  with_items: " {{ nifi_nodes }}"
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))
+
+- name: Configure nifi properties to remove single user provider
+  lineinfile:
+    path: /var/lib/docker/volumes/{{ item.nifi_configuration }}/_data/nifi.properties
+    line: 'nifi.security.user.login.identity.provider='
+    regexp: '^(?i)nifi\.security\.user\.login\.identity\.provider='
+    state: present
+  with_items: " {{ nifi_nodes }}"
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))
+
+- name: Verify nifi properties configuration
+  replace:
+    replace: ''
+    path: /var/lib/docker/volumes/{{ item.nifi_configuration }}/_data/nifi.properties
+    regexp: '^(?i)nifi\.security\.user\.login\.identity\.provider='
+  with_items: "{{ nifi_nodes }}"
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))
+
+- name: Verify nifi properties configuration
+  replace:
+    replace: ''
+    path: /var/lib/docker/volumes/{{ item.nifi_configuration }}/_data/nifi.properties
+    regexp: '^(?i)nifi\.security\.user\.authorizer='
+  with_items: "{{ nifi_nodes }}"
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))
+
+- name: Verify nifi properties configuration
+  replace:
+    replace: ''
+    path: /var/lib/docker/volumes/{{ item.nifi_configuration }}/_data/nifi.properties
+    regexp: '^(?i)nifi\.security\.keystore='
+  with_items: "{{ nifi_nodes }}"
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))
+
+- name: Verify nifi properties configuration
+  replace:
+    replace: ''
+    path: /var/lib/docker/volumes/{{ item.nifi_configuration }}/_data/nifi.properties
+    regexp: '^(?i)nifi\.security\.keystoreType='
+  with_items: "{{ nifi_nodes }}"
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))
+
+- name: Verify nifi properties configuration
+  replace:
+    replace: ''
+    path: /var/lib/docker/volumes/{{ item.nifi_configuration }}/_data/nifi.properties
+    regexp: '^(?i)nifi\.security\.keystorePasswd='
+  with_items: "{{ nifi_nodes }}"
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))
+
+- name: Verify nifi properties configuration
+  replace:
+    replace: ''
+    path: /var/lib/docker/volumes/{{ item.nifi_configuration }}/_data/nifi.properties
+    regexp: '^(?i)nifi\.security\.keyPasswd='
+  with_items: "{{ nifi_nodes }}"
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))
+
+- name: Verify nifi properties configuration
+  replace:
+    replace: ''
+    path: /var/lib/docker/volumes/{{ item.nifi_configuration }}/_data/nifi.properties
+    regexp: '^(?i)nifi\.security\.truststore='
+  with_items: "{{ nifi_nodes }}"
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))
+
+- name: Verify nifi properties configuration
+  replace:
+    replace: ''
+    path: /var/lib/docker/volumes/{{ item.nifi_configuration }}/_data/nifi.properties
+    regexp: '^(?i)nifi\.security\.truststoreType='
+  with_items: "{{ nifi_nodes }}"
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))
+
+- name: Verify nifi properties configuration
+  replace:
+    replace: ''
+    path: /var/lib/docker/volumes/{{ item.nifi_configuration }}/_data/nifi.properties
+    regexp: '^(?i)nifi\.security\.truststorePasswd='
+  with_items: "{{ nifi_nodes }}"
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))

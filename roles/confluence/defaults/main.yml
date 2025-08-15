@@ -1,0 +1,32 @@
+volume_backups: 1
+confluence_subnet: 192.168.1.128/26
+backup_mount_dir_confluence: "{{ backup_mount_dir }}/confluence"
+nec_svr_ops_dir_confluence: "{{ nec_svr_ops_dir }}/confluence"
+compose_path: "/opt/compose/confluence"
+confluence_container_name: "confluence"
+confluence_config_file: "{{backup_mount_dir_confluence}}/docker_volumes/confluence/{{ENV}}/config/confluence.cfg.xml"
+trustStorePath: "{{nec_svr_ops_dir_confluence}}/docker_volumes/truststore/cacerts"
+collation: "en_US.UTF-8"
+confluence_healthcheck: "https://{{confluence_proxy_name}}/status"
+confluence_expected_status: "RUNNING"
+harbor_url_for_confluence: "registry.web.yuma.army.mil/library/confluence"
+confluence_version_tag: "8.5.21_ypg_2025-05-13_19-07-05"
+confluence_db_volume: "confluence-db"
+
+confluence_db_user: conf_dev
+confluence_ports: "8090"
+confluence_proxy_name: "confluence.dev.yuma.army.mil"
+
+#Confluence Backup
+confluence_backup_dir: "{{backup_mount_dir_confluence}}/docker_volumes/confluence/{{ENV}}/home"
+confluence_db_restore_dir: '\\\necfs\NEC\NEC_App\SQL_Prod_Backup\ProdITS\#OnDemand\DoNotDelete\Ansible\Confluence'
+confluence_restore_dir: "{{backup_mount_dir_confluence}}/docker_volumes/confluence/prod/home"
+postgres_restore_dir: "{{backup_mount_dir_confluence}}/docker_volumes/confluence/prod/database"
+postgres_backup_dir: "{{backup_mount_dir_confluence}}/docker_volumes/confluence/{{ENV}}/database"
+
+# Postgres
+postgres_container_name: "confluence_postgres"
+collation: "en_US.UTF-8"
+confluence_db_connection: "confluencedb"
+harbor_url_for_postgres: "registry.web.yuma.army.mil/library/postgres"
+postgres_version_tag: "15.11_ypg_2025-03-03_17-44-38"

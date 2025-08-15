@@ -1,0 +1,94 @@
+# Keystone
+application_stor_lab: '/dev/sda'
+containers_stor_lab: '/dev/sdb'
+lablication_part: '/dev/sda1'
+containers_part: '/dev/sdb1'
+kc_env_hosturl: 'https://keystone.lab.yuma.army.mil/auth/'
+kc_env_admhosturl: 'https://keystone.lab.yuma.army.mil/auth/'
+wildcard_cert: "lab.crt"
+wildcard_key_name: "lab.key"
+wildcard_fqdn: "lab.yuma.army.mil"
+keystone_nginx_server: "YPGRW04XAAC23TN"
+keystone_service_file: keystone_temp.conf
+keystone_url: keystonetemp.lab.yuma.army.mil
+keystone_ports: 8080
+keystone_auth_oidc: "https://keycloak.lab.yuma.army.mil/realms/ypg/.well-known/openid-configuration"
+keystone_restore_dir: '{{backup_mount_dir_keystone}}/docker_volumes/keystone/dev/database'
+
+fstab_config_host:
+  - (?=(^(.(?!(\s+\/mnt\/keystone\s+)))*$))
+  - (?=(^(.(?!(\s+\/mnt\/data\s+)))*$))
+  - (?=(^(.(?!(\s+\/mnt\/keystone_share\s+)))*$))
+
+host_accounts:
+  - username: keystone
+    uid:
+    gid:
+    ssh:
+    password_hash:
+  - username: rtkit
+    uid:
+    gid:
+    ssh:
+    password_hash:
+  - username: nvidia-persistenced
+    uid:
+    gid:
+    ssh:
+    password_hash:
+  - username: dnsmasq
+    uid:
+    gid:
+    ssh:
+    password_hash:
+  - username: avahi
+    uid:
+    gid:
+    ssh:
+    password_hash:
+  - username: cups-pk-helper
+    uid:
+    gid:
+    ssh:
+    password_hash:
+  - username: pulse
+    uid:
+    gid:
+    ssh:
+    password_hash:
+  - username: geoclue
+    uid:
+    gid:
+    ssh:
+    password_hash:
+  - username: saned
+    uid:
+    gid:
+    ssh:
+    password_hash:
+  - username: colord
+    uid:
+    gid:
+    ssh:
+    password_hash:
+  - username: gdm
+    uid:
+    gid:
+    ssh:
+    password_hash:
+
+manage_ubuntu_V_238367: false
+
+ufw_host:
+  - order: 100
+    rule: 'allow'
+    direction: 'in'
+    from_ip: 6.2.9.184
+    proto: 'tcp'
+    to_port: 8080
+
+isPhysical: false
+manage_users_profiles: false
+run_dod_certs: false
+allow_reboot: false
+ssh_keys: false

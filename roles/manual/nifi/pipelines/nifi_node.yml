@@ -1,0 +1,134 @@
+trigger: none
+
+pool:
+  name: 's6_ondemand_24.04'
+
+parameters:
+  - name: ENV
+    displayName: "Select Environment:"
+    type: string
+    values:
+      - lab
+      - prod
+      - prep
+      - dev
+
+  - name: node
+    displayName: "Name of nifi node:"
+    type: string
+    values:
+      - nec1
+      - dpb1
+      - dpb2
+
+  - name: run_docker
+    displayName: "Run the Docker Baseline:"
+    type: string
+    default: null
+    values:
+      - true
+      - false
+
+variables:
+  - group: Ansible
+
+  - group: YPG_Environment
+
+  - name: environment
+    ${{ if eq(parameters.ENV, 'prod') }}:
+      value: "prod"
+    ${{ if eq(parameters.ENV, 'prep') }}:
+      value: "prep"
+    ${{ if eq(parameters.ENV, 'dev') }}:
+      value: "dev"
+    ${{ if eq(parameters.ENV, 'lab') }}:
+      value: "dev"
+
+  - name: vault
+    ${{ if eq(parameters.ENV, 'prod') }}:
+      value: "vault_key"
+    ${{ if eq(parameters.ENV, 'prep') }}:
+      value: "vault_key_prep"
+    ${{ if eq(parameters.ENV, 'dev') }}:
+      value: "vault_key_dev"
+    ${{ if eq(parameters.ENV, 'lab') }}:
+      value: "vault_key_dev"
+
+  - name: host
+    ${{ if eq(parameters.ENV, 'prod') }}:
+      value: "YPGRW04XAAA03AG"
+    ${{ if eq(parameters.ENV, 'prep') }}:
+      value: "YPGRW04XAAA0H9E"
+    ${{ if eq(parameters.ENV, 'dev') }}:
+      value: "YPGRW04XAAA000F"
+    ${{ if eq(parameters.ENV, 'lab') }}:
+      value: "YPGRW04XAAA0BGD"
+
+  - name: node_keystore
+    ${{ if eq(parameters.node, 'nec1') }}:
+      value: "nec1_keystore.p12"
+    ${{ if eq(parameters.node, 'dpb1') }}:
+      value: "dpb1_keystore.p12"
+    ${{ if eq(parameters.node, 'dpb2') }}:
+      value: "dpb2_keystore.p12"
+
+  - name: inventory
+    ${{ if eq(parameters.ENV, 'prod') }}:
+      value: "inventory.yml"
+    ${{ if eq(parameters.ENV, 'prep') }}:
+      value: "Pre-Production-inventory.yml"
+    ${{ if eq(parameters.ENV, 'dev') }}:
+      value: "Lab-inventory.yml"
+    ${{ if eq(parameters.ENV, 'lab') }}:
+      value: "Lab-inventory.yml"
+
+  - name: run_docker
+    ${{ if eq(parameters.run_docker, 'true') }}:
+      value: "true"
+    ${{ if eq(parameters.run_docker, 'false') }}:
+      value: ""
+
+steps:
+- script: pipx upgrade --include-injected ansible
+  displayName: 'Upgrade pipx'
+
+- script: rm -f ~/.ssh/known_hosts
+  displayName: 'Purging known hosts'
+
+- task: DownloadSecureFile@1
+  name: ssh_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: 'ypgansible_ssh'
+
+- task: DownloadSecureFile@1
+  name: vault_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: $(vault)
+
+- script: chmod 600 $(ssh_key.secureFilePath)
+  displayName: 'Setting SSH Key permisisons'
+
+- task: DownloadSecureFile@1
+  name: specified_keystore
+  displayName: 'Download keystore'
+  inputs:
+    secureFile: $(node_keystore)
+
+- script: >
+    ansible-playbook site.yml 
+    -i $(inventory_path)/$(inventory) 
+    -e 
+    "HOSTS=$(host) 
+    ENV=$(environment) 
+    role=nifi 
+    mode=deploy_node 
+    nifi_node=${{parameters.node}} 
+    nifi_manager=null 
+    keystore=$(specified_keystore.secureFilePath) 
+    verify_hostname='' 
+    run_docker=$(run_docker)" 
+    --vault-password-file=$(vault_key.secureFilePath) 
+    --key-file '$(ssh_key.secureFilePath)'
+  displayName: 'NiFi node deployment'

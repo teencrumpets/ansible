@@ -1,0 +1,95 @@
+- name: Mounting backup share
+  mount:
+    src: "{{ backup_share }}"
+    path: '{{ backup_mount_dir_stigman }}'
+    state: mounted
+    fstype: nfs
+  changed_when: false
+
+- name: Stigman mysql volume backup directory
+  file:
+    state: directory
+    path: "{{ stigman_mysql_backup_dir }}"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Stigman keycloak volume backup directory
+  file:
+    state: directory
+    path: "{{ stigman_keycloak_backup_dir }}"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+    
+- name: Stopping Stigman service
+  command:
+    cmd: 'docker compose down'
+    chdir: '{{ compose_path }}'
+  changed_when: false
+
+- name: Backing up stigman-keycloak volume to incremental
+  command:
+    cmd: "tar cvpf {{ stigman_keycloak_backup_dir }}/{{ lookup('pipe', 'date +%Y_%h_%d-%H-%M') }}_config.tar ."
+    chdir: "/var/lib/docker/volumes/{{ stigman_accessmanagement }}"
+  changed_when: false
+
+- name: Backing up stigman_mysql volume to incremental
+  command:
+    cmd: "tar cvpf {{ stigman_mysql_backup_dir }}/{{ lookup('pipe', 'date +%Y_%h_%d-%H-%M') }}_config.tar ."
+    chdir: "/var/lib/docker/volumes/{{ stigman_database }}"
+  changed_when: false
+
+- name: Get mysql volume backup list
+  find:
+    paths: "{{ stigman_mysql_backup_dir }}"
+    file_type: file
+  register: backups
+  failed_when: not backups.files
+
+- name: Setting values
+  set_fact:
+    oldest: "{{ backups.files | sort(attribute='mtime') | first }}"
+    file_count: "{{ backups.files | length }}"
+
+- name: Volume backups count
+  debug:
+    msg: "The number of volume backups is {{ file_count }}"
+
+- name: Volume backups list
+  debug:
+    msg: "{{ backups.files }}"
+
+- name: Removing oldest backup mysql
+  file:
+    path: "{{ oldest.path }}"
+    state: absent
+  changed_when: false
+  when: file_count | int > volume_backups
+
+- name: Get keycloak volume backup list
+  find:
+    paths: "{{ stigman_keycloak_backup_dir }}"
+    file_type: file
+  register: backups
+  failed_when: not backups.files
+
+- name: Setting values
+  set_fact:
+    oldest: "{{ backups.files | sort(attribute='mtime') | first }}"
+    file_count: "{{ backups.files | length }}"
+
+- name: Volume backups count keycloak
+  debug:
+    msg: "The number of volume backups is {{ file_count }}"
+
+- name: Volume backups list
+  debug:
+    msg: "{{ backups.files }}"
+
+- name: Removing oldest backup keycloak
+  file:
+    path: "{{ oldest.path }}"
+    state: absent
+  changed_when: false
+  when: file_count | int > volume_backups

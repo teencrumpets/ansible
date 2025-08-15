@@ -1,0 +1,126 @@
+trigger: none
+
+pool:
+  name: 's6_scheduled_24.04'
+
+variables:
+  - group: Ansible
+
+stages:
+  - stage: first_attempt
+    jobs:
+      - job: update_trivy
+        displayName: Update Trivy
+    
+        steps:
+          - task: DownloadSecureFile@1
+            name: vault_key
+            displayName: 'Download SSH Key'
+            inputs:
+              secureFile: 'vault_key'
+
+          - script: >
+              ansible-playbook site.yml
+              -e
+              "HOSTS=localhost
+              ENV=prod
+              role=docker_host
+              vcenter_datacenter=UCS-Lab
+              vm_folder=_ServerBuild
+              rm_hosts_file=/home/ado_build_agent/.ssh/known_hosts
+              vm_name=$(Agent.Name)
+              build_agent_name=$(Agent.Name)
+              run_ubuntu=''
+              vm_cleanup=true
+              mode=update_trivy_db"
+              --vault-password-file=$(vault_key.secureFilePath)
+            displayName: 'Update Trivy'
+
+  - stage: Wait_before_second_try
+    dependsOn: first_attempt
+    condition: failed()
+    jobs:
+      - job: wait
+        displayName: Wait
+        pool: server
+
+        steps: 
+          - task: Delay@1
+            inputs:
+             delayForMinutes: 60
+
+  - stage: second_attempt
+    dependsOn: Wait_before_second_try
+    condition: or(failed('first_attempt'), succeeded('Wait_before_second_try'))
+    jobs:
+      - job: update_trivy
+        condition: always()
+        displayName: Update Trivy
+    
+        steps:
+          - task: DownloadSecureFile@1
+            name: vault_key
+            displayName: 'Download SSH Key'
+            inputs:
+              secureFile: 'vault_key'
+              
+          - script: >
+              ansible-playbook site.yml
+              -e
+              "HOSTS=localhost
+              ENV=prod
+              role=docker_host
+              vcenter_datacenter=UCS-Lab
+              vm_folder=_ServerBuild
+              rm_hosts_file=/home/ado_build_agent/.ssh/known_hosts
+              vm_name=$(Agent.Name)
+              build_agent_name=$(Agent.Name)
+              run_ubuntu=''
+              vm_cleanup=true
+              mode=update_trivy_db"
+              --vault-password-file=$(vault_key.secureFilePath)
+            displayName: 'Update Trivy'
+
+  - stage: Wait_before_third_try
+    dependsOn: second_attempt
+    condition: failed()
+    jobs:
+      - job: wait
+        displayName: Wait
+        pool: server
+
+        steps: 
+          - task: Delay@1
+            inputs:
+             delayForMinutes: 60
+
+  - stage: third_attempt
+    dependsOn: Wait_before_third_try
+    condition: or(failed('second_attempt'), succeeded('Wait_before_third_try'))
+    jobs:
+      - job: update_trivy
+        displayName: Update Trivy
+    
+        steps:
+          - task: DownloadSecureFile@1
+            name: vault_key
+            displayName: 'Download SSH Key'
+            inputs:
+              secureFile: 'vault_key'
+              
+          - script: >
+              ansible-playbook site.yml
+              -e
+              "HOSTS=localhost
+              ENV=prod
+              role=docker_host
+              vcenter_datacenter=UCS-Lab
+              vm_folder=_ServerBuild
+              rm_hosts_file=/home/ado_build_agent/.ssh/known_hosts
+              vm_name=$(Agent.Name)
+              build_agent_name=$(Agent.Name)
+              run_ubuntu=''
+              vm_cleanup=true
+              mode=update_trivy_db"
+              --vault-password-file=$(vault_key.secureFilePath)
+            displayName: 'Update Trivy'

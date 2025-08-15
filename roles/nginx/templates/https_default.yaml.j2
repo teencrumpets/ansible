@@ -1,0 +1,11 @@
+server {
+    server_name {{ wildcard_fqdn }};
+
+    listen 443 ssl default_server;
+
+    include {{ ssl_config }}/*.conf;
+
+    location / {
+            return 404;
+    }
+}

@@ -1,0 +1,175 @@
+- name: Package - Uninstall Postfix package
+  package:
+    name: postfix
+    state: absent
+
+- name: Package Uninstall systemd-timesyncd package - V-270645
+  package:
+    name: systemd-timesyncd
+    state: absent
+    purge: true
+  when: manage_ubuntu_V_270645
+
+- name: Package Uninstall NTP package - V-270646
+  package:
+    name: ntp
+    state: absent
+  when: manage_ubuntu_V_270646
+
+- name: Package Uninstall telnet package - V-270647
+  package:
+    name: telnetd
+    state: absent
+  when: manage_ubuntu_V_270647
+
+- name: Package Uninstall rsh-server package - V-270648
+  package:
+    name: rsh-server
+    state: absent
+  when: manage_ubuntu_V_270648
+
+- name: Package Install chrony package - V-270664
+  package:
+    name: chrony
+    state: present
+  when: manage_ubuntu_V_270664
+
+- name: Package Install vlock package - V-270674
+  package:
+    name: vlock
+    state: present
+  when: manage_ubuntu_V_270674
+    
+- name: Package Install apparmor package - V-270659
+  package:
+    name: apparmor
+    state: present
+  when: manage_ubuntu_V_270659
+
+- name: Service Enable apparmor service - V-270660
+  service:
+    name: apparmor
+    state: started
+    enabled: true
+  ignore_errors: yes
+  when: manage_ubuntu_V_270660
+
+- name: Service Install sssd.service and the required pam packages - V-270662 
+  package: 
+    name: 
+      - sssd
+      - libpam-sss
+      - libnss-sss
+    state: absent
+  when: manage_ubuntu_V_270662
+
+- name: Packages - SSSD service check if enabled - V-270663
+  systemd:
+    name: sssd.service
+    state: stopped
+    enabled: true
+  when: manage_ubuntu_V_270663
+
+- name: Package Get list of files - V-270695
+  find:
+    paths: /etc/apt/apt.conf.d
+    recurse: yes
+    file_type: file
+  register: apt_config_files
+  when: manage_ubuntu_V_270695
+
+- name: Package Disable AllowUnauthenticated - V-270695
+  lineinfile: 
+    state: absent
+    path: '{{ item.path }}'
+    regexp: 'AllowUnauthenticated "true"'
+  loop: '{{ apt_config_files.files }}' 
+  when: manage_ubuntu_V_270695
+
+- name: Package Install SSH package - V-270665
+  package:
+    name: ssh
+    state: present
+  when: manage_ubuntu_V_270665
+
+- name: Package Install opensc-pkcs11 package - V-270672
+  package:
+    name: opensc-pkcs11
+    state: present
+  when: manage_ubuntu_V_270672
+
+- name: Package Check kdump-tools status - V-270746
+  command: systemctl is-active kdump-tools.service
+  register: kdump_status
+  failed_when: kdump_status.rc != 4 and kdump_status.rc != 0
+  changed_when: false 
+  when: manage_ubuntu_V_270746
+
+- name: Package Disable kdump service - V-270746
+  systemd:
+    name: kdump.service
+    enabled: false
+    state: stopped
+  when: (kdump_status.stdout == 'active') and (manage_ubuntu_V_270746)
+
+- name: Package Install Rsyslog package - V-270653
+  package:
+    name: rsyslog
+    state: present
+  when: manage_ubuntu_V_270653
+
+- name: Service Enable Rsyslog service - V-270653
+  service:
+    name: rsyslog
+    state: started
+    enabled: true
+  when: manage_ubuntu_V_270653
+
+- name: Package Install libpam-pkcs11 package - V-270736
+  package:
+    name: libpam-pkcs11
+    state: present
+  when: manage_ubuntu_V_270736
+
+- name: Package Install AuditD package - V-270656
+  package:
+    name: auditd
+    state: present
+  when: manage_ubuntu_V_270656
+
+- name: Service Enable AuditD service - V-270657
+  service:
+    name: auditd
+    state: started
+    enabled: true
+  when: manage_ubuntu_V_270657
+
+- name: Package Install audispd-plugin package - V-270658
+  package:
+    name: audispd-plugins
+    state: present
+  when: manage_ubuntu_V_270658
+
+- name: Package Install UFW package - V-270655
+  package:
+    name: ufw
+    state: present
+  when: manage_ubuntu_V_270655
+
+- name: Packaage Install pam_pwquality package - V-270661
+  package:
+    name: libpam-pwquality
+    state: present
+  when: manage_ubuntu_V_270661
+
+- name: Package Install libpam-pkcs11 package - V-270673
+  package:
+    name: libpam-pkcs11
+    state: present
+  when: manage_ubuntu_V_270673
+
+- name: Package Uninstall AIDE package - V-270649
+  package:
+    name: aide
+    state: absent
+  when: manage_ubuntu_V_270649

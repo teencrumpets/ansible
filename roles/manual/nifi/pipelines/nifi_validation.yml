@@ -1,0 +1,75 @@
+trigger: none
+
+pool:
+  name: 's6_triggered_24.04'
+
+variables:
+  - group: Ansible
+
+steps:
+- bash: echo "##vso[task.setvariable variable=vm_name]ansible_$(uuidgen)"
+  displayName: Generating hostname
+
+- script: echo $(Agent.Name)
+  displayName: Displaying hostname
+  
+- script: pipx upgrade --include-injected ansible
+  displayName: 'Upgrade pipx'
+
+- script: rm -f ~/.ssh/known_hosts
+  displayName: 'Purging known hosts'
+
+- task: DownloadSecureFile@1
+  name: vault_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: 'vault_key_dev'
+
+- task: DownloadSecureFile@1
+  name: registry_dev_keystore
+  displayName: 'Download registry dev keystore'
+  inputs:
+    secureFile: 'registry_dev_keystore.p12'
+
+- task: DownloadSecureFile@1
+  name: nifi_dev_keystore
+  displayName: 'Download nifi dev keystore'
+  inputs:
+    secureFile: 'nifi_dev_keystore.p12'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e 
+    "ENV=dev
+    vm_name=$(Agent.Name) 
+    role=nifi
+    rm_hosts_file=/home/ado_build_agent/.ssh/known_hosts 
+    mode=deploy_manager
+    nifi_manager=dev 
+    nifi_node=null 
+    keystore=$(registry_dev_keystore.secureFilePath) 
+    validation_group=nifi_validation 
+    verify_hostname='' 
+    build_agent_name=$(Agent.Name)"
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating NiFi manager deployment'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e 
+    "ENV=dev 
+    vm_name=$(Agent.Name) 
+    run_ubuntu=''
+    run_docker=''
+    role=nifi 
+    mode=deploy_node 
+    nifi_node=dev1 
+    nifi_manager=null 
+    keystore=$(nifi_dev_keystore.secureFilePath) 
+    validation_group=nifi_validation 
+    verify_hostname=''
+    check_vm=''
+    vm_cleanup=true
+    build_agent_name=$(Agent.Name)" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating NiFi node deployment'

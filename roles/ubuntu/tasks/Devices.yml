@@ -1,0 +1,44 @@
+- name: Devices - Get list of wireless files - V-270755
+  shell: ls -L -d /sys/class/net/*/wireless
+  register: wireless_file
+  failed_when: wireless_file.stdout_lines
+  changed_when: false 
+  when: manage_ubuntu_V_270755
+
+- name: Devices - Disabling USB storage kernel module - V-270718
+  lineinfile:
+    path: '/etc/modprobe.d/DISASTIG.conf'
+    create: yes
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - {line: 'install usb-storage /bin/true', regexp: '(?i)^install\s+usb-storage'}
+    - {line: 'blacklist usb-storage', regexp: '(?i)^blacklist\s+usb-storage'}
+  when: manage_ubuntu_V_270718
+
+- name: Devices - Verify disabling USB storage kernel module - V-270718
+  replace:
+    path: '/etc/modprobe.d/DISASTIG.conf'
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '(?i)^install\s+usb-storage'}
+    - { regexp: '(?i)^blacklist\s+usb-storage'}
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_270718
+
+- name: Devices - Disabling USB storage kernel module - V-270718
+  lineinfile:
+    path: '/etc/modprobe.d/DISASTIG.conf'
+    create: yes
+    line: "{{ item.line }}"
+    state: absent
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - {line: 'install usb-storage /bin/true', regexp: '(?i)^install\s+usb-storage'}
+    - {line: 'blacklist usb-storage', regexp: '(?i)^blacklist\s+usb-storage'}
+  when: not manage_ubuntu_V_270718

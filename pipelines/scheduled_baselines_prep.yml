@@ -1,0 +1,121 @@
+trigger: none
+
+jobs:
+  - job: dependencies
+    displayName: Dependencies
+
+    pool:
+      name: 's6_scheduled_24.04'
+
+    variables:
+      - group: Ansible
+
+    steps:
+    - script: pipx upgrade --include-injected ansible
+      displayName: 'Upgrade pipx'
+
+    - task: DownloadSecureFile@1
+      name: ssh_key
+      displayName: 'Download SSH Key'
+      inputs:
+        secureFile: 'ypgansible_ssh'
+
+    - task: DownloadSecureFile@1
+      name: vault_key
+      displayName: 'Download SSH Key'
+      inputs:
+        secureFile: 'vault_key'
+
+    - script: chmod 600 $(ssh_key.secureFilePath)
+      displayName: 'Setting SSH Key permisisons'
+    
+    - script: >
+        ansible-playbook dynamic-inventory.yml 
+        -e 
+        "HOSTS=localhost 
+        inventory_owner=$(inventory_owner) 
+        inventory_group=$(inventory_group) 
+        inventory_path=$(inventory_path)" 
+        --vault-password-file=$(vault_key.secureFilePath) 
+        --key-file '$(ssh_key.secureFilePath)'
+      displayName: 'Updating Inventory'
+
+  - job: ubuntu
+    displayName: Ubuntu
+    dependsOn: dependencies
+
+    condition: always()
+    pool:
+      name: 's6_scheduled_24.04'
+
+    variables:
+      - group: Ansible
+
+    steps:
+    - task: DownloadSecureFile@1
+      name: ssh_key
+      displayName: 'Download SSH Key'
+      inputs:
+        secureFile: 'ypgansible_ssh'
+
+    - task: DownloadSecureFile@1
+      name: vault_key
+      displayName: 'Download SSH Key'
+      inputs:
+        secureFile: 'vault_key_prep'
+
+    - script: chmod 600 $(ssh_key.secureFilePath)
+      displayName: 'Setting SSH Key permisisons'
+
+    - script: >
+        ansible-playbook site.yml 
+        -i $(inventory_path)/Pre-Production-inventory.yml 
+        -e 
+        "HOSTS=ubuntu
+        run_dod_certs=''
+        role=ubuntu
+        ENV=prep" 
+        --vault-password-file=$(vault_key.secureFilePath) 
+        --key-file '$(ssh_key.secureFilePath)'
+      displayName: 'Running Ubuntu'
+      condition: succeededOrFailed()
+      
+  - job: docker
+    displayName: Docker
+    dependsOn: dependencies
+    
+    condition: always()
+    pool:
+      name: 's6_scheduled_24.04'
+
+    variables:
+      - group: Ansible
+
+    steps:
+    - task: DownloadSecureFile@1
+      name: ssh_key
+      displayName: 'Download SSH Key'
+      inputs:
+        secureFile: 'ypgansible_ssh'
+        
+    - task: DownloadSecureFile@1
+      name: vault_key
+      displayName: 'Download SSH Key'
+      inputs:
+        secureFile: 'vault_key_prep'
+
+    - script: chmod 600 $(ssh_key.secureFilePath)
+      displayName: 'Setting SSH Key permisisons'
+
+    - script: >
+        ansible-playbook site.yml 
+        -i $(inventory_path)/Pre-Production-inventory.yml 
+        -e 
+        "HOSTS=docker
+        run_dod_certs=''
+        role=docker_host 
+        ENV=prep" 
+        --vault-password-file=$(vault_key.secureFilePath) 
+        --key-file '$(ssh_key.secureFilePath)'
+      displayName: 'Running Docker'
+      condition: succeededOrFailed()

@@ -1,0 +1,62 @@
+- name: snow backup mount point directory
+  file:
+    state: directory
+    path: "{{ backup_mount_snow }}"
+  tags: backup
+
+- name: Mount NFS backup share
+  mount:
+    src: "{{ nfs_share }}"
+    path: '{{ backup_mount_snow }}'
+    state: mounted
+    fstype: nfs
+  changed_when: false
+  tags: backup
+
+- name: snow backup directory
+  file:
+    state: directory
+    path: "{{ snow_backup_dir }}"
+  tags: backup
+
+- name: Dump the database
+  shell: /glide/mysql/bin/mysqldump -u {{ mysql_user }} -p{{ mariadb_pw }} {{ snow_db }} --quick --quote-names --allow-keywords --add-drop-table --extended-insert --skip-add-locks --skip-disable-keys --no-autocommit --single-transaction | gzip > {{ snow_backup_dir }}/{{ snow_db }}_{{ENV}}_`date +%y%m%d-%H%M`.sql.gz
+  register: dump_result
+  tags: dump
+
+- name: Print a variable
+  debug:
+    var: dump_result
+  tags: dump
+
+- name: Get backup list snow_db
+  find:
+    paths: "{{ snow_backup_dir }}"
+    file_type: file
+  register: backups
+  failed_when: not backups.files
+  tags: files
+
+- name: Setting values
+  set_fact:
+    oldest: "{{ backups.files | sort(attribute='mtime') | first }}"
+    file_count: "{{ backups.files | length }}"
+  tags: files
+
+- name: backups count snow_db
+  debug:
+    msg: "The number of db backups is {{ file_count }}"
+  tags: files
+
+- name: backups list
+  debug:
+    msg: "{{ backups.files }}"
+  tags: files
+
+- name: Removing oldest backup snow_db
+  file:
+    path: "{{ oldest.path }}"
+    state: absent
+  changed_when: false
+  when: file_count | int > db_backups
+  tags: files

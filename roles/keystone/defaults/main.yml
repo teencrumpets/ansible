@@ -1,0 +1,79 @@
+# Override Variables
+isPhysical: true 
+volume_backups: 1
+keystone_service_template: 'keystone.yaml.j2'
+
+# Compose
+keystone_db_user: 'admin'
+keystone_celery_user: 'admin'
+keystone_kcdb_user: 'admin'
+keystone_rabbit_user: 'addams'
+keystone_kcadmin_user: 'admin'
+
+keystone_compose: '/opt/compose/keystone'
+
+# Volumes
+nginx_container_name: "keystone-nginx"
+backend_container_name: "keystone-backend"
+backend_db_container_name: "keystone-backend-db"
+keycloak_db_container_name: "keystone-keycloak-db"
+celery_db_container_name: "keystone-celery-db"
+rabbitmq_container_name: "keystone-rabbitmq"
+worker_common_container_name: "keystone-worker-common"
+worker_ml_container_name: "keystone-worker-ml"
+filesharemgr_container_name: "keystone-file-share-mgr"
+keycloak_container_name: "keystone-keycloak"
+
+# Images
+harbor_url_for_keystone_frontend: "registry.web.yuma.army.mil/library/keystone_frontend"
+keystone_frontend_version_tag: "v1-2-2_ypg_2025-08-04_15-11-19"
+harbor_url_for_keystone_backend: "registry.web.yuma.army.mil/library/keystone_backend"
+keystone_backend_version_tag: "v1-2-3_ypg_2025-08-05_18-49-46"
+harbor_url_for_keystone_postgresql: "registry.web.yuma.army.mil/library/keystone_postgres"
+keystone_postgresql_version_tag: "v15_ypg_2025-07-14_18-28-16"
+harbor_url_for_keystone_rabbitmq: "registry.web.yuma.army.mil/library/keystone_rabbitmq"
+keystone_rabbitmq_version_tag: "v1-2-0_ypg_2025-07-14_18-28-29"
+harbor_url_for_keystone_workercommon: "registry.web.yuma.army.mil/library/keystone_workercommon"
+keystone_workercommon_version_tag: "v1-2-2_ypg_2025-08-04_18-29-32"
+harbor_url_for_keystone_workerml: "registry.web.yuma.army.mil/library/keystone_workerml"
+keystone_workerml_version_tag: "v1-2-0_ypg_2025-07-16_12-57-29"
+harbor_url_for_keystone_filesharemgr: "registry.web.yuma.army.mil/library/keystone_filesharemgr"
+keystone_filesharemgr_version_tag: "v1-2-1_ypg_2025-07-21_15-21-40"
+harbor_url_for_keystone_keycloak: "registry.web.yuma.army.mil/library/keystone_keycloak"
+keystone_keycloak_version_tag: "v1-2-0_ypg_2025-07-14_19-20-24"
+
+# Backup Directories
+backup_mount_dir_keystone: '{{ backup_mount_dir }}/keystone'
+keystone_db_volume_dir: '/mnt/keystone/'
+keystone_backup_dir: '{{backup_mount_dir_keystone}}/docker_volumes/keystone/{{ENV}}/database'
+keystone_restore_dir: '{{backup_mount_dir_keystone}}/docker_volumes/keystone/prod/database'
+
+# File Shares
+nec_svr_ops_dir_keystone: '{{ nec_svr_ops_dir }}/keystone'
+keystone_library: '{{ nec_svr_ops_dir_keystone }}/docker_volumes/keystone/library'
+Keystone_windows_share: '//necfs/NEC/NEC_App/keystone'
+keystone_fileshare_user: 'svc.ypgr.keystone'
+
+# Mount Points
+keystone_app_stor_dir: '/mnt/keystone'
+keystone_data_stor_dir: '/mnt/data'
+keystone_share_path: '/var/lib/docker/volumes/keystone_cifs_volume_keystone/_data'
+
+# MTLS
+mtls_ca: "/etc/ssl/ca.pem"
+mtls_server: "/etc/ssl/server.pem"
+mtls_server_key: "/etc/ssl/server-key.pem"
+mtls_client: "/etc/ssl/client.pem"
+mtls_client_key: "/etc/ssl/client-key.pem"
+
+# FSTAB
+fstab_config_default:
+  - (?=(^(.(?!(\s+\/\s+)))*$))
+  - (?=(^(.(?!(\s+\/boot\s+)))*$))
+  - (?=(^(.(?!(\s+\/var\/log\/audit\s+)))*$))
+  - (?=(^(.(?!(\s+\/boot\/efi\s+)))*$))
+  - (?=^((?!(#)).*$))
+  - (?=^((?!(\/swap)).*$))
+
+fstab_regexp_begin: (
+fstab_regexp_end: .+$)

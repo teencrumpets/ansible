@@ -1,0 +1,85 @@
+- name: main playbook - Stop Trellix
+  service:
+    name: "{{ item.name }}"
+    state: stopped
+  with_items:
+    - { name: mfeespd}
+    - { name: mfetpd}
+  ignore_errors: true
+
+- name: Check if server has valid hostname
+  set_fact:
+    valid_name: false
+    old_name: "{{ansible_hostname}}"
+  when: hostname != ansible_hostname and verify_hostname
+
+- name: Find and remove wrong hostname and set correct one to 127.0.1.1
+  replace:
+    path: /etc/hosts
+    regexp: '^127.*{{ old_name }}.*$'
+    replace: "127.0.1.1 {{ hostname }}"
+  when: not valid_name and verify_hostname
+  
+- name: Add correct host if missing
+  lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.1\.1\s+'
+    line: "127.0.1.1 {{ hostname }}"
+  when: not valid_name and verify_hostname
+
+- name: Set hostname
+  hostname: 
+    name: "{{ hostname }}"
+    
+- name: Ensure packages are installed
+  include_tasks: packages.yml
+  tags: packages
+
+- name: Import aide.yml
+  import_tasks: aide.yml
+  tags: aide
+
+- name: Import sshd
+  import_tasks: sshd.yml
+  tags: sshd
+
+- name: Import audit
+  import_tasks: audit.yml
+  tags: audit
+
+- name: Import sysctl
+  import_tasks: sysctl.yml
+  tags: sysctl
+
+- name: Import fstab
+  import_tasks: fstab.yml
+  tags: fstab
+
+- name: Import security
+  import_tasks: security.yml
+  tags: security
+
+- name: Import other
+  import_tasks: other.yml
+  tags: other
+
+- name: Import pamd
+  import_tasks: pamd.yml
+  tags: pamd
+
+- name: Import grub
+  import_tasks: grub.yml
+  tags: grub
+
+- name: Import rsyslog
+  import_tasks: rsyslog.yml
+  tags: rsyslog
+
+- name: main playbook - Start Trellix
+  service:
+    name: "{{ item.name }}"
+    state: started
+  with_items:
+    - { name: mfeespd}
+    - { name: mfetpd}
+  ignore_errors: true

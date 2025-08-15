@@ -1,0 +1,147 @@
+- name: sshd playbook - Add subsystem entry for PowerShell
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    line: 'Subsystem powershell /usr/bin/pwsh -sshs -nologo'
+
+- name: sshd playbook - Verify powershell subsystem entry
+  replace:
+    path: /etc/ssh/sshd_config
+    regexp: '^(?i)Subsystem\spowershell\s\/usr\/bin\/pwsh\s-sshs\s-nologo'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+
+- name: sshd playbook - Enable SSH warning banner - V-230225, V-230227
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    line: 'Banner /etc/issue'
+    state: present
+    regexp: '^(?i)Banner'
+  notify: reload_sshd
+  when: manage_rhel8_v_230225
+
+- name: sshd playbook - Copy 'issue' file to /etc/issue - V-230225, V-230227
+  copy:
+    src: issue
+    dest: /etc/issue
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload_sshd
+  when: manage_rhel8_v_230225
+
+- name: sshd playbook - Configuring /etc/ssh/sshd_config - V-230244, V-230288, V-230296, V-230382, V-230555, V-244525, V-244528, V-230290, V-230330, V-230380, V-230527, V-230556, V-230291
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { line: 'ClientAliveCountMax 1', regexp: '^(?i)ClientAliveCountMax', managed: "{{ manage_rhel8_v_230244 }}" }
+    - { line: 'StrictModes yes', regexp: '^(?i)StrictModes', managed: "{{ manage_rhel8_v_230288 }}" }
+    - { line: 'PermitRootLogin no', regexp: '^(?i)PermitRootLogin', managed: "{{ manage_rhel8_v_230296 }}" }
+    - { line: 'PrintLastLog yes', regexp: '^(?i)PrintLastLog', managed: "{{ manage_rhel8_v_230382 }}" }
+    - { line: 'X11Forwarding no', regexp: '^(?i)X11Forwarding', managed: "{{ manage_rhel8_v_230555 }}" }
+    - { line: 'ClientAliveInterval 600', regexp: '^(?i)ClientAliveInterval', managed: "{{ manage_rhel8_v_244525 }}" }
+    - { line: 'GSSAPIAuthentication no', regexp: '^(?i)GSSAPIAuthentication', managed: "{{ manage_rhel8_v_244528 }}" }
+    - { line: 'IgnoreUserKnownHosts yes', regexp: '^(?i)IgnoreUserKnownHosts', managed: "{{ manage_rhel8_v_230290 }}" }
+    - { line: 'PermitUserEnvironment no', regexp: '^(?i)PermitUserEnvironment', managed: "{{ manage_rhel8_v_230330 }}" }
+    - { line: 'PermitEmptyPasswords no', regexp: '^(?i)PermitEmptyPasswords', managed: "{{ manage_rhel8_v_230380 }}" }
+    - { line: 'Rekeylimit 1G 1h', regexp: '^(?i)RekeyLimit', managed: "{{ manage_rhel8_v_230527 }}" }
+    - { line: 'X11UseLocalhost yes', regexp: '^(?i)X11UseLocalhost', managed: "{{ manage_rhel8_v_230556 }}" }
+    - { line: 'KerberosAuthentication no', regexp: '^(?i)KerberosAuthentication', managed: "{{ manage_rhel8_v_230291 }}" }
+  when: item.managed
+  notify: reload_sshd
+
+- name: sshd playbook - Verify /etc/ssh/sshd_config - V-230244, V-230288, V-230296, V-230382, V-230555, V-244525, V-244528, V-230290, V-230330, V-230380, V-230527, V-230556, V-230291
+  replace:
+    path: /etc/ssh/sshd_config
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '^(?i)ClientAliveCountMax', managed: "{{ manage_rhel8_v_230244 }}" }
+    - { regexp: '^(?i)StrictModes', managed: "{{ manage_rhel8_v_230288 }}" }
+    - { regexp: '^(?i)PermitRootLogin', managed: "{{ manage_rhel8_v_230296 }}" }
+    - { regexp: '^(?i)PrintLastLog', managed: "{{ manage_rhel8_v_230382 }}" }
+    - { regexp: '^(?i)X11Forwarding', managed: "{{ manage_rhel8_v_230555 }}" }
+    - { regexp: '^(?i)ClientAliveInterval', managed: "{{ manage_rhel8_v_244525 }}" }
+    - { regexp: '^(?i)GSSAPIAuthentication', managed: "{{ manage_rhel8_v_244528 }}" }
+    - { regexp: '^(?i)IgnoreUserKnownHosts', managed: "{{ manage_rhel8_v_230290 }}" }
+    - { regexp: '^(?i)PermitUserEnvironment', managed: "{{ manage_rhel8_v_230330 }}" }
+    - { regexp: '^(?i)PermitEmptyPasswords', managed: "{{ manage_rhel8_v_230380 }}" }
+    - { regexp: '^(?i)RekeyLimit', managed: "{{ manage_rhel8_v_230527 }}" }
+    - { regexp: '^(?i)X11UseLocalhost', managed: "{{ manage_rhel8_v_230556 }}" }
+    - { regexp: '^(?i)KerberosAuthentication', managed: "{{ manage_rhel8_v_230291 }}" }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed
+
+- name: sshd playbook - Configure /etc/crypto-policies/back-ends/opensshserver.config - V-230251, V-230252
+  replace:
+    path: /etc/crypto-policies/back-ends/opensshserver.config
+    replace: "{{ item.replace }}"
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { replace: '-oMACs=hmac-sha2-512,hmac-sha2-256,hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com', regexp: '(-oMACs=\S+)', managed: "{{ manage_rhel8_v_230251 }}" }
+    - { replace: '-oCiphers=aes256-ctr,aes192-ctr,aes128-ctr,aes256-gcm@openssh.com,aes128-gcm@openssh.com', regexp: '(-oCiphers=\S+)', managed: "{{ manage_rhel8_v_230252 }}" }
+  notify: reload_sshd
+  when: item.managed
+
+- name: sshd playbook - verify /etc/crypto-policies/back-ends/opensshserver.config - V-230251, V-230252
+  replace:
+    path: /etc/crypto-policies/back-ends/opensshserver.config
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '(-oMACs=\S+)', managed: "{{ manage_rhel8_v_230251 }}" }
+    - { regexp: '(-oCiphers=\S+)', managed: "{{ manage_rhel8_v_230252 }}" }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed
+
+- name: sshd playbook - Configure /etc/crypto-policies/back-ends/gnutls.config - V-230256
+  replace:
+    path: /etc/crypto-policies/back-ends/gnutls.config
+    replace: '\1+VERS-ALL:-VERS-DTLS0.9:-VERS-SSL3.0:-VERS-TLS1.0:-VERS-TLS1.1:-VERS-DTLS1.0:+COMP-NULL:%PROFILE_MEDIUM'
+    regexp: '^(?i)(SYSTEM=NONE:\+MAC-ALL:-MD5:\+GROUP-ALL:-GROUP-X25519:-GROUP-X448:\+SIGN-ALL:-SIGN-RSA-MD5:-SIGN-RSA-SHA1:-SIGN-DSA-SHA1:-SIGN-ECDSA-SHA1:-SIGN-DSA-SHA224:-SIGN-DSA-SHA256:-SIGN-DSA-SHA384:-SIGN-DSA-SHA512:-SIGN-EDDSA-ED25519:-SIGN-EDDSA-ED448:\+CIPHER-ALL:-CHACHA20-POLY1305:-CAMELLIA-256-GCM:-CAMELLIA-128-GCM:-CAMELLIA-256-CBC:-CAMELLIA-128-CBC:-3DES-CBC:-ARCFOUR-128:\+ECDHE-RSA:\+ECDHE-ECDSA:\+DHE-RSA:)((?!.*\+VERS-ALL:-VERS-DTLS0\.9:-VERS-SSL3\.0:-VERS-TLS1\.0:-VERS-TLS1\.1:-VERS-DTLS1\.0).*)(:\+COMP-NULL:%PROFILE_MEDIUM$)'
+  when: manage_rhel8_v_230256
+
+- name: SSHD - Disabling password authentication
+  lineinfile:
+    path: '/etc/ssh/sshd_config'
+    line: 'PasswordAuthentication no'
+    state: present
+    regexp: '^(?i)PasswordAuthentication'
+  notify: reload_sshd
+  when: ssh_key
+
+- name: SSHD - Enabling password authentication
+  lineinfile:
+    path: '/etc/ssh/sshd_config'
+    line: 'PasswordAuthentication yes'
+    state: present
+    regexp: '^(?i)PasswordAuthentication'
+  notify: reload_sshd
+  when: not ssh_key
+
+- name: SSHD - Verify password authentication disabled
+  replace:
+    path: '/etc/ssh/sshd_config'
+    regexp: '^(?i)PasswordAuthentication'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+
+- name: Remove past configuration of strong rng
+  lineinfile:
+    path: /etc/sysconfig/sshd
+    regexp: ^(?i)\s*SSH_USE_STRONG_RNG=
+    state: absent

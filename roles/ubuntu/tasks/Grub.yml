@@ -1,0 +1,61 @@
+- name: Grub - Configure /etc/grub.d/40_custom - V-270675
+  lineinfile:
+    path: '/etc/grub.d/40_custom'
+    line: "{{item.line}}"
+    regexp: "{{item.regexp}}"
+  with_items:
+    - { line: 'set superusers="root"', regexp: '(?i)^set\s+superusers' }
+    - { line: 'password_pbkdf2 root "{{grub_hash}}"', regexp: '(?i)^password_pbkdf2\s+root' }
+  notify: Update Grub
+  when: manage_ubuntu_V_270675
+
+- name: Grub - Verify /etc/grub.d/40_custom - V-270675
+  replace:
+    path: '/etc/grub.d/40_custom'
+    regexp: "{{item.regexp}}"
+    replace: ''
+  with_items:
+    - { regexp: '(?i)^set\s+superusers' }
+    - { regexp: '(?i)^password_pbkdf2\s+root' }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_270675
+
+- name: Grub - Configure audit records at system startup - V-270676
+  lineinfile: 
+    path: '/etc/default/grub'
+    line: 'GRUB_CMDLINE_LINUX="audit=1"'
+    regexp: '(?i)^GRUB_CMDLINE_LINUX='
+  notify: Update Grub
+  when: manage_ubuntu_V_270676
+
+- name: Grub - Verify audit records at system startup - V-270676
+  replace:
+    path: '/etc/default/grub'
+    regexp: '(?i)^GRUB_CMDLINE_LINUX='
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_270676
+
+  # YPG site Grub settings
+- name: Grub - Setting unrestircted Grub menu options
+  replace:
+    path: '/etc/grub.d/10_linux'
+    replace: '\1  --unrestricted"'
+    regexp: (?i)^(class\s*=(?!.*--unrestricted).*)(\"$)
+  notify: Update Grub
+
+- name: Grub - Verifying patch for 10_linux file
+  replace:
+    path: '/etc/grub.d/10_linux'
+    regexp: '(?i)^class\s*=\s*"'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false

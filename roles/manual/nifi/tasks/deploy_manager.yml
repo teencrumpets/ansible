@@ -1,0 +1,74 @@
+- name: Mounting nfs backup share
+  mount:
+    src: "{{ nfs_share }}"
+    path: "{{ nifi_mount_dir }}"
+    state: mounted
+    fstype: nfs
+  changed_when: false
+
+- name: Ensure manager service is down
+  command:
+    cmd: 'docker compose down'
+    chdir: "/opt/compose/{{ item.nifi_manager_dir }}"
+  changed_when: false
+  with_items: "{{ nifi_managers }}"
+  when: ((nifi_manager == item.keys() | list | first) and (mode == "restore"))
+
+- name: Ensuring any old home volumes are gone
+  command:
+    cmd: 'docker volume rm registry-db flow_storage'
+    chdir: "/opt/compose/{{ item.nifi_manager_dir }}"
+  failed_when: false
+  changed_when: false
+  with_items: "{{ nifi_managers }}"
+  when: ((nifi_manager == item.keys() | list | first) and (mode == "restore"))
+
+- name: Create nifi manager service but not start
+  shell:
+    cmd: 'docker compose up --no-start'
+    chdir: '/opt/compose/{{ item.nifi_manager_dir }}'
+  changed_when: false
+  with_items: "{{ nifi_managers }}"
+  when: ((nifi_manager == item.keys() | list | first) and (mode == "deploy_manager"))
+
+- name: Copy authorizers.xml file
+  copy:
+    src: "{{ nifi_binary }}registry_authorizers.xml"
+    dest: "/var/lib/docker/volumes/{{ nifi_registry_conf }}/_data/authorizers.xml"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+    remote_src: yes
+  with_items: "{{ nifi_managers }}"
+  when: ((nifi_manager == item.keys() | list | first) and (mode == "deploy_manager"))
+
+- name: Check for keystore definition
+  set_fact:
+    use_default_keystore: "{{ not keystore is defined }}"
+
+- name: Setting keystore source (use default if undefined)
+  loop: "{{ nifi_managers }}"
+  set_fact:
+    keystore: "{{ item.nifi_keystore if use_default_keystore else keystore }}"
+  when: ((nifi_manager == item.keys() | list | first) and (mode == "deploy_manager"))
+
+- name: Copy keystore file
+  copy:
+    src: '{{ keystore }}'
+    dest: "/var/lib/docker/volumes/{{ nifi_registry_conf }}/_data/keystore.p12"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+  with_items: "{{ nifi_managers }}"
+  when: ((nifi_manager == item.keys() | list | first) and (mode == "deploy_manager"))
+
+- name: Copy truststore file
+  copy:
+    src: "{{ nifi_binary }}truststore.jks"
+    dest: "/var/lib/docker/volumes/{{ nifi_registry_conf }}/_data/truststore.jks"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+    remote_src: yes
+  with_items: "{{ nifi_managers }}"
+  when: ((nifi_manager == item.keys() | list | first) and (mode == "deploy_manager"))

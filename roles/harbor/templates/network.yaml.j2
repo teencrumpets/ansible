@@ -1,0 +1,8 @@
+networks:
+  harbor:
+    driver: bridge
+    name: harbor
+    ipam:
+      driver: default
+      config:
+        - subnet: {{ harbor_subnet }}

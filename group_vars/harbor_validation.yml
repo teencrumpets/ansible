@@ -1,0 +1,3 @@
+harbor_restore_dir: "{{backup_mount_dir_harbor}}/docker_volumes/harbor/dev/data"
+hostname: 'ubuntu-server'
+harbor_name: registry.dev.yuma.army.mil

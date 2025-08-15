@@ -1,0 +1,94 @@
+- name: SSHD - Configuring /etc/ssh/sshd_config - V-270741, V-270742, V-270743, V-270668, V-270667, V-270717, V-270708, V-270709, V-270669
+  lineinfile:
+    path: '/etc/ssh/sshd_config'
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - {line: 'UsePAM yes', regexp: '(?i)^UsePam', managed: "{{ manage_ubuntu_V_270741 }}" }
+    - {line: 'ClientAliveCountMax 1', regexp: '(?i)^ClientAliveCountMax', managed: "{{ manage_ubuntu_V_270742 }}" }
+    - {line: 'ClientAliveInterval 600', regexp: '(?i)^ClientAliveInterval', managed: "{{ manage_ubuntu_V_270743 }}" }
+    - {line: 'MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256', regexp: '(?i)^MACs', managed: "{{ manage_ubuntu_V_270668 }}" }
+    - {line: 'Ciphers aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes128-ctr', regexp: '(?i)^Ciphers', managed: "{{ manage_ubuntu_V_270667 }}" }
+    - {line: 'PermitEmptyPasswords no', regexp: '(?i)^PermitEmptyPasswords', managed: "{{ manage_ubuntu_V_270717 }}" }
+    - {line: 'PermitUserEnvironment no', regexp: '(?i)^PermitUserEnvironment', managed: "{{ manage_ubuntu_V_270717 }}" }
+    - {line: 'X11Forwarding no', regexp: '(?i)^X11Forwarding', managed: "{{ manage_ubuntu_V_270708 }}" }
+    - {line: 'X11UseLocalhost yes', regexp: '(?i)^X11UseLocalhost', managed: "{{ manage_ubuntu_V_270709 }}" }
+    - {line: 'KexAlgorithms ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group-exchange-sha256,diffie-hellman-group16-sha512,diffie-hellman-group14-sha256', regexp: '(?i)^KexAlgorithms', managed: "{{manage_ubuntu_V_270669 }}" }
+  notify: Restart SSHD
+  when: item.managed
+
+- name: SSHD - Verify /etc/ssh/sshd_config  - V-270741, V-270742, V-270743, V-270668, V-270667, V-270717, V-270708, V-270709, V-270669
+  replace:
+    path: '/etc/ssh/sshd_config'
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '(?i)^UsePam', managed: "{{ manage_ubuntu_V_270741 }}" }
+    - { regexp: '(?i)^ClientAliveCountMax', managed: "{{ manage_ubuntu_V_270742 }}" }
+    - { regexp: '(?i)^ClientAliveInterval', managed: "{{ manage_ubuntu_V_270743 }}" }
+    - { regexp: '(?i)^MACs', managed: "{{ manage_ubuntu_V_270668 }}" }
+    - { regexp: '(?i)^Ciphers', managed: "{{ manage_ubuntu_V_270667 }}" }
+    - { regexp: '(?i)^PermitEmptyPasswords', managed: "{{ manage_ubuntu_V_270717 }}" }
+    - { regexp: '(?i)^PermitUserEnvironment', managed: "{{ manage_ubuntu_V_270717 }}" }
+    - { regexp: '(?i)^X11Forwarding', managed: "{{ manage_ubuntu_V_270708 }}" }
+    - { regexp: '(?i)^X11UseLocalhost', managed: "{{ manage_ubuntu_V_270709 }}" }
+    - { regexp: '(?i)^KexAlgorithms', managed: "{{ manage_ubuntu_V_270669 }}" }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed
+
+  #YPG Site Settings
+- name: SSHD - Check that second SSHD file exists
+  stat:
+    path: /etc/ssh/sshd_config.d/50-cloud-init.conf
+  register: sshd_file
+
+- name: SSHD - Disabling password authentication
+  lineinfile:
+    path: '/etc/ssh/sshd_config'
+    line: 'PasswordAuthentication no'
+    state: present
+    regexp: '(?i)^PasswordAuthentication'
+  notify: Restart SSHD
+  when: ssh_key
+
+- name: SSHD - Enabling password authentication
+  lineinfile:
+    path: '/etc/ssh/sshd_config'
+    line: 'PasswordAuthentication yes'
+    state: present
+    regexp: '(?i)^PasswordAuthentication'
+  notify: Restart SSHD
+  when: not ssh_key
+
+- name: SSHD - Verify password authentication
+  replace:
+    path: '/etc/ssh/sshd_config'
+    regexp: '(?i)^PasswordAuthentication'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+
+- name: SSHD - Removing password auth from sshd config file
+  lineinfile:
+    path: '/etc/ssh/sshd_config.d/50-cloud-init.conf'
+    state: absent
+    regexp: '(?i)^PasswordAuthentication'
+  notify: Restart SSHD
+  when: (sshd_file.stat.exists)
+
+- name: SSHD - Check that second sshd file is not empty
+  shell: "test -s /etc/ssh/sshd_config.d/50-cloud-init.conf || echo 'empty'"
+  changed_when: false
+  register: sshd_file
+
+- name: SSHD - Removing file in sshd_config.d if empty
+  file: 
+    path: '/etc/ssh/sshd_config.d/50-cloud-init.conf'
+    state: absent
+  when: sshd_file.stdout == 'empty'

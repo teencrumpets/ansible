@@ -1,0 +1,3 @@
+compose_path: "/opt/compose/postgresql_home"
+cert_dir: "postgresql-certs"
+postgres_version: "15.6"

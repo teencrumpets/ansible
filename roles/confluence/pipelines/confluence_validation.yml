@@ -1,0 +1,106 @@
+trigger: none
+
+pool:
+  name: 's6_triggered_24.04'
+
+variables:
+  - group: Ansible
+
+steps:
+- bash: echo "##vso[task.setvariable variable=vm_name]ansible_$(uuidgen)"
+  displayName: Generating hostname
+
+- script: echo $(vm_name)
+  displayName: Displaying hostname
+  
+- script: pipx upgrade --include-injected ansible
+  displayName: 'Upgrade pipx'
+
+- script: rm -f ~/.ssh/known_hosts
+  displayName: 'Purging known hosts'
+
+- task: DownloadSecureFile@1
+  name: vault_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: 'vault_key_dev'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e 
+    "ENV=dev
+    vm_name=$(Agent.Name)
+    rm_hosts_file=/home/ado_build_agent/.ssh/known_hosts  
+    role=confluence
+    run_dod_certs='' 
+    allow_reboot=''
+    ssh_keys=''
+    mode=deploy 
+    validation_group=confluence_validation 
+    vm_cleanup=true
+    build_agent_name=$(Agent.Name)" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating confluence deploy'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e 
+    "ENV=dev
+    vm_name=$(Agent.Name)
+    run_dod_certs=''
+    rm_hosts_file=/home/ado_build_agent/.ssh/known_hosts
+    role=confluence 
+    mode=restore
+    allow_reboot=''
+    ssh_keys=''
+    validation_group=confluence_validation 
+    build_agent_name=$(Agent.Name)" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating confluence restore'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e 
+    "run_ubuntu='' 
+    run_docker=''
+    check_vm=''
+    ENV=dev
+    vm_name=$(Agent.Name)
+    role=confluence 
+    mode=backup 
+    validation_group=confluence_validation
+    build_agent_name=$(Agent.Name)" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating confluence backup'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e 
+    "run_ubuntu='' 
+    check_vm=''
+    run_docker=''
+    ENV=dev
+    vm_name=$(Agent.Name)
+    role=confluence 
+    mode=bounce 
+    validation_group=confluence_validation
+    build_agent_name=$(Agent.Name)" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating confluence bounce'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e 
+    "run_ubuntu='' 
+    run_docker=''
+    check_vm=''
+    vm_cleanup=true
+    ENV=dev
+    vm_name=$(Agent.Name) 
+    role=confluence 
+    mode=update
+    verify_hostname='true'
+    validation_group=confluence_validation
+    build_agent_name=$(Agent.Name)" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating confluence update'

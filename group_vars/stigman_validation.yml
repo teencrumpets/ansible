@@ -1,0 +1,28 @@
+stigman_binary: '{{nec_svr_ops_dir_stigman}}/docker_volumes/stigman/binary/prep/'
+
+stigman_kc_adm_username: 'admin'
+stigman_kc_host_url: 'https://stigmanprep.yuma.army.mil/kc/'
+stigman_kc_host_adm_url: 'https://stigmanprep.yuma.army.mil/kc/'
+
+stigman_port: '6969'
+
+stigman_oidc_provider: 'http://keycloak:8080/realms/stigman'
+stigman_client_oidc_provider: 'https://stigmanprep.yuma.army.mil/kc/realms/stigman'
+stigman_db_user: 'stigman'
+stigman_swagg_server: 'https://stigmanprep.yuma.army.mil/stigman/api'
+
+stigman_mysql_user: 'stigman'
+stigman_mysql_database: 'stigman'
+
+mysql_container_name: "mysql"
+stigman_container_name: "stigman"
+keycloak_container_name: "keycloak"
+nginx_container_name: "nginx"
+
+stigman_webserver: 'stigman-nginx'
+stigman_html: 'stigman-html'
+stigman_volume: 'stigman-home'
+stigman_accessmanagement: 'stigman-keycloak'
+stigman_database: 'stigman-mysql'
+
+nginx_server_name: 'stigmanprep.yuma.army.mil'

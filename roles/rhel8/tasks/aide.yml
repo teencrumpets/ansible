@@ -1,0 +1,46 @@
+- name: aide playbook - Ensure Aide is installed - V-251710
+  package:
+    name: aide
+    state: present
+  register: diff
+
+- name: aide playbook - Build and test AIDE database - V-251710
+  command: /usr/sbin/aide --init
+  when: (manage_rhel8_v_251710) and (diff.changed != false)
+
+- name: aide playbook - Configure /etc/aide.conf - V-230475, V-230551
+  lineinfile: 
+    path: /etc/aide.conf
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items: 
+    - { line: '# Audit Tools', regexp: '^(?i)#\sAudit\sTools', managed: "{{ manage_rhel8_v_230475 }}" }
+    - { line: '/usr/sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512', regexp: '^(?i)\/usr\/sbin\/auditctl\sp\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512', managed: "{{ manage_rhel8_v_230475 }}" }
+    - { line: '/usr/sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512', regexp: '^(?i)\/usr\/sbin\/auditd\sp\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512', managed: "{{ manage_rhel8_v_230475 }}" }
+    - { line: '/usr/sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512', regexp: '^(?i)\/usr\/sbin\/ausearch\sp\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512', managed: "{{ manage_rhel8_v_230475 }}" }
+    - { line: '/usr/sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512', regexp: '^(?i)\/usr\/sbin\/aureport\sp\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512', managed: "{{ manage_rhel8_v_230475 }}" }
+    - { line: '/usr/sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512', regexp: '^(?i)\/usr\/sbin\/autrace\sp\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512', managed: "{{ manage_rhel8_v_230475 }}" }
+    - { line: '/usr/sbin/rsyslogd p+i+n+u+g+s+b+acl+xattrs+sha512', regexp: '^(?i)\/usr\/sbin\/rsyslogd\sp\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512', managed: "{{ manage_rhel8_v_230475 }}" }
+    - { line: '/usr/sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512', regexp: '^(?i)\/usr\/sbin\/augenrules\sp\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512', managed: "{{ manage_rhel8_v_230475 }}" }
+  when: item.managed
+
+- name: aide playbook - Verify /etc/aide.conf - V-230475, V-230551
+  replace:
+    path: /etc/aide.conf
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '^(?i)#\sAudit\sTools', managed: "{{ manage_rhel8_v_230475 }}" }
+    - { regexp: '^(?i)\/usr\/sbin\/auditctl\sp\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512', managed: "{{ manage_rhel8_v_230475 }}" }
+    - { regexp: '^(?i)\/usr\/sbin\/auditd\sp\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512', managed: "{{ manage_rhel8_v_230475 }}" }
+    - { regexp: '^(?i)\/usr\/sbin\/ausearch\sp\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512', managed: "{{ manage_rhel8_v_230475 }}" }
+    - { regexp: '^(?i)\/usr\/sbin\/aureport\sp\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512', managed: "{{ manage_rhel8_v_230475 }}" }
+    - { regexp: '^(?i)\/usr\/sbin\/autrace\sp\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512', managed: "{{ manage_rhel8_v_230475 }}" }
+    - { regexp: '^(?i)\/usr\/sbin\/rsyslogd\sp\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512', managed: "{{ manage_rhel8_v_230475 }}" }
+    - { regexp: '^(?i)\/usr\/sbin\/augenrules\sp\+i\+n\+u\+g\+s\+b\+acl\+xattrs\+sha512', managed: "{{ manage_rhel8_v_230475 }}" }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed

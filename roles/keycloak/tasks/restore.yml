@@ -1,0 +1,36 @@
+- name: Mounting backup share for Keycloak
+  mount:
+    src: "{{ backup_share }}"
+    path: '{{ backup_mount_dir_keycloak }}'
+    state: mounted
+    fstype: nfs
+  changed_when: false
+
+- name: Ensuring Keycloak service is down
+  command:
+    cmd: "docker compose down"
+    chdir: "{{ compose_path }}"
+  changed_when: false
+
+- name: Remove Keycloak Database volumes
+  command:
+    cmd: 'docker volume rm keycloak_database'
+    chdir: "{{ compose_path }}"
+  failed_when: false
+  changed_when: false
+
+- name: Get list of Keycloak Database volumes backups
+  find:
+    paths: "{{ postgres_restore_dir }}"
+    file_type: file
+  register: backups
+
+- name: Find newest Keycloak Database volume backup
+  set_fact:
+    newest: "{{ backups.files | sort(attribute='mtime') | last }}"
+
+- name: Restore Keycloak Database volume with newest backup
+  command:
+    cmd: "tar xvpf {{ newest.path }}"
+    chdir: /var/lib/docker/volumes/{{ kc_db_volume }}
+  changed_when: false

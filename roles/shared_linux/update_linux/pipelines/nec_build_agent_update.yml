@@ -1,0 +1,53 @@
+trigger: none
+
+pool:
+  name: 's6_scheduled_24.04_2'
+
+variables:
+  - group: Ansible
+  - group: YPG_Environment
+
+steps:
+- script: pipx upgrade --include-injected ansible
+  displayName: 'Upgrade pipx'
+
+- script: rm -f ~/.ssh/known_hosts
+  displayName: 'Purging known hosts'
+
+- task: DownloadSecureFile@1
+  name: ssh_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: 'ypgansible_ssh'
+
+- task: DownloadSecureFile@1
+  name: vault_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: "vault_key"
+
+- script: chmod 600 $(ssh_key.secureFilePath)
+  displayName: 'Setting SSH Key permisisons'
+
+- script: >
+    ansible-playbook dynamic-inventory.yml 
+    -e 
+    "HOSTS=localhost 
+    inventory_owner=$(inventory_owner) 
+    inventory_group=$(inventory_group) 
+    inventory_path=$(inventory_path)" 
+    --vault-password-file=$(vault_key.secureFilePath) 
+    --key-file '$(ssh_key.secureFilePath)'
+  displayName: 'Updating Inventory'
+
+- script: >
+    ansible-playbook site.yml 
+    -i $(inventory_path)/$(inventory) 
+    -e 
+    "HOSTS=$(nec_build_server) 
+    ENV=prod
+    auto_update=true
+    role=shared_linux/update_linux" 
+    --vault-password-file=$(vault_key.secureFilePath)
+    --key-file '$(ssh_key.secureFilePath)'
+  displayName: 'Updating Server'

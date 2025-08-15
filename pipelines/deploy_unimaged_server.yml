@@ -1,0 +1,81 @@
+trigger: none
+
+pool:
+  name: 's6_triggered_24.04'
+
+parameters:
+  - name: HOSTS
+    displayName: "Name of Server:"
+    type: string
+
+  - name: ENV
+    displayName: "Select Environment:"
+    type: string
+    default: dev
+    values:
+      - prod
+      - prep
+      - dev
+  - name: ASSIGNED_SA
+    displayName: "Assigned SA:"
+    type: string
+  
+  - name: OS
+    displayName: "What is the OS of the server"
+    type: string
+    default: none
+    values:
+      - Windows
+      - Application_Specific
+  
+variables:
+  - group: Ansible
+
+  - name: vm_operating_system
+    ${{ if eq(parameters.OS, 'Windows') }}:
+      value: "Windows"
+    ${{ if eq(parameters.OS, 'Application_Specific') }}:
+      value: "Application_Specific"
+
+  - name: vault
+    ${{ if eq(parameters.ENV, 'prod') }}:
+      value: "vault_key"
+    ${{ if eq(parameters.ENV, 'prep') }}:
+      value: "vault_key_prep"
+    ${{ if eq(parameters.ENV, 'dev') }}:
+      value: "vault_key_dev"
+
+steps:
+- script: pipx upgrade --include-injected ansible
+  displayName: 'Upgrade pipx'
+
+- task: DownloadSecureFile@1
+  name: ssh_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: 'ypgansible_ssh'
+
+- task: DownloadSecureFile@1
+  name: vault_key
+  displayName: 'Download Vault Key'
+  inputs:
+    secureFile: $(vault)
+
+- script: chmod 600 $(ssh_key.secureFilePath)
+  displayName: 'Setting SSH Key permissions'
+
+- script: >
+    ansible-playbook site.yml 
+    -e 
+    "HOSTS=localhost
+    vm_name=${{parameters.HOSTS}}  
+    ENV=${{parameters.ENV}}
+    create_vm='true'
+    vm_operating_system=$(vm_operating_system)
+    assigned_sa=${{parameters.ASSIGNED_SA}}
+    rm_hosts_file=/home/ado_build_agent/.ssh/known_hosts
+    check_vm='' 
+    role=vmware" 
+    --vault-password-file=$(vault_key.secureFilePath) 
+    --key-file '$(ssh_key.secureFilePath)'
+  displayName: 'deploying windows through vmware role'

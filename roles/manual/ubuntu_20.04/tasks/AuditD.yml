@@ -1,0 +1,175 @@
+- name: AuditD - Ensure AuditD is installed - V-238298
+  package:
+    name: auditd
+    state: present
+  register: auditd_installed
+  when: manage_ubuntu_V_238298
+
+- name: AuditD - Ensure AuditD is enabled and running - V-238298
+  service:
+    name: auditd
+    enabled: true
+    state: started
+  when: manage_ubuntu_V_238298
+
+- name: AuditD - Restart AuditD service - V-238298
+  service:
+    name: auditd
+    state: restarted
+  when: (manage_ubuntu_V_238298) and (auditd_installed.changed == true)
+
+- name: AuditD - Get partition with audit records - V-238305
+  shell: grep ^log_file /etc/audit/auditd.conf | awk '{print $3}'
+  register: partition
+  changed_when: false
+  when: manage_ubuntu_V_238305
+
+- name: AuditD - Ensure audit records go to correct partition V-238305
+  command: sed -i -E 's@^(log_file\s*=\s*).*@\1 /var/log/audit/audit.log@' /etc/audit/auditd.conf
+  when: (manage_ubuntu_V_238305) and (partition.stdout != "/var/log/audit/audit.log")
+
+- name: AuditD - Ensure auditispd is installed - V-238306
+  package:
+    name: audispd-plugins
+    state: present
+  when: manage_ubuntu_V_238306
+
+- name: AuditD - Configuring audisp - V-238306
+  lineinfile:
+    path: "{{ item.path }}"
+    line: "{{ item.line }}"
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { path: "/etc/audisp/plugins.d/au-remote.conf", line: 'active = yes', regexp: '^(?i)active' }
+    - { path: "/etc/audisp/audisp-remote.conf", line: 'remote_server = {{ syslog_ip }}', regexp: '^(?i)remote_server' }
+    - { path: "/etc/audisp/audisp-remote.conf", line: 'port = {{ syslog_port }}', regexp: '^(?i)port' }
+  notify: Restart AuditD
+  when: manage_ubuntu_V_238306
+
+- name: AuditD - Verifying audisp config - V-238306
+  replace:
+    path: "{{ item.path }}"
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { path: "/etc/audisp/plugins.d/au-remote.conf", regexp: '^(?i)active' }
+    - { path: "/etc/audisp/audisp-remote.conf", regexp: '^(?i)remote_server' }
+    - { path: "/etc/audisp/audisp-remote.conf", regexp: '^(?i)port' }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_238306
+
+- name: AuditD - Configuring /etc/audit/auditd.conf - V-238243, V-238244, V-238245, V-238246, V-238247, V-238307 
+  lineinfile:
+    path: "{{ item.path }}"
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { path: '/etc/audit/auditd.conf', line: 'action_mail_acct = YPG-NEC-ServerTeam-Operations@army.mil', regexp: '^(?i)action_mail_acct', managed: "{{ manage_ubuntu_V_238243 }}" }
+    - { path: '/etc/audit/auditd.conf', line: 'disk_full_action = HALT', regexp: '^(?i)disk_full_action', managed: "{{ manage_ubuntu_V_238244 }}" }
+    - { path: '/etc/audit/auditd.conf', line: 'log_file = /var/log/audit/audit.log', regexp: '^(?i)log_file', managed: "{{ manage_ubuntu_V_238245 }}" }
+    - { path: '/etc/audit/auditd.conf', line: 'log_group = root', regexp: '^(?i)log_group', managed: "{{ manage_ubuntu_V_238247 }}" }
+    - { path: '/etc/audit/auditd.conf', line: 'space_left_action = email', regexp: '^(?i)space_left_action', managed: "{{ manage_ubuntu_V_238307 }}" }
+    - { path: '/etc/audit/auditd.conf', line: 'space_left = 25%', regexp: '^(?i)space_left\s+=', managed: "{{ manage_ubuntu_V_238307 }}" }
+  notify: Restart AuditD
+  when: item.managed
+  
+- name: AuditD - Verify /etc/audit/auditd.conf - V-238243, V-238244, V-238245, V-238246, V-238247, V-238307 
+  replace:
+    path: /etc/audit/auditd.conf
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '^(?i)action_mail_acct', managed: "{{ manage_ubuntu_V_238243 }}" }
+    - { regexp: '^(?i)disk_full_action', managed: "{{ manage_ubuntu_V_238244 }}" }
+    - { regexp: '^(?i)log_file', managed: "{{ manage_ubuntu_V_238245 }}" }
+    - { regexp: '^(?i)log_group', managed: "{{ manage_ubuntu_V_238247 }}" }
+    - { regexp: '^(?i)space_left_action', managed: "{{ manage_ubuntu_V_238307 }}" }
+    - { regexp: '^(?i)space_left\s+=', managed: "{{ manage_ubuntu_V_238307 }}" }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed
+  
+- name: AuditD - Audit directory permissions - V-238248, V-238245
+  file:
+    path: /var/log/audit
+    mode: g-w,o-rwx
+  when: manage_ubuntu_V_238248
+
+- name: AuditD - Get list of files - V-238248, V-238245
+  find:
+    paths: /var/log/audit
+    recurse: yes
+    file_type: file
+  register: log_files
+  when: manage_ubuntu_V_238248
+
+- name: AuditD - Set audit log permissions - V-238248, V-238245
+  file:
+    mode: u-x,g-rwx,o-rwx
+    dest: '{{ item.path }}'
+  loop: '{{ log_files.files }}'
+  when: manage_ubuntu_V_238248
+
+- name: AuditD - Audit log owner - V-238246
+  file:
+    path: /var/log/audit
+    state: directory
+    recurse: true
+    owner: root
+  when: manage_ubuntu_V_238246
+
+- name: AuditD - Audit log group - V-238247
+  file:
+    path: /var/log/audit
+    state: directory
+    recurse: true
+    group: root
+  when: manage_ubuntu_V_238247
+
+- name: AuditD - Set audit tool directory permissions - V-238300
+  file:
+    path: "{{ item.path }}"
+    mode: 0755
+  with_items:
+    - { path: '/sbin/auditctl' }
+    - { path: '/sbin/aureport' }
+    - { path: '/sbin/ausearch' }
+    - { path: '/sbin/autrace' }
+    - { path: '/sbin/auditd' }
+    - { path: '/sbin/audispd' }
+    - { path: '/sbin/augenrules' }
+  when: manage_ubuntu_V_238300
+
+- name: AuditD - Set audit tool directory owner - V-238301
+  file:
+    path: "{{ item.path }}"
+    owner: root
+  with_items:
+    - { path: '/sbin/auditctl' }
+    - { path: '/sbin/aureport' }
+    - { path: '/sbin/ausearch' }
+    - { path: '/sbin/autrace' }
+    - { path: '/sbin/auditd' }
+    - { path: '/sbin/audispd' }
+    - { path: '/sbin/augenrules' }
+  when: manage_ubuntu_V_238301
+
+- name: AuditD - Set audit tool directory group - V-238302
+  file:
+    path: "{{ item.path }}"
+    group: root
+  with_items:
+    - { path: '/sbin/auditctl' }
+    - { path: '/sbin/aureport' }
+    - { path: '/sbin/ausearch' }
+    - { path: '/sbin/autrace' }
+    - { path: '/sbin/auditd' }
+    - { path: '/sbin/audispd' }
+    - { path: '/sbin/augenrules' }
+  when: manage_ubuntu_V_238302

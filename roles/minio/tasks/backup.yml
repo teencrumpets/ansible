@@ -1,0 +1,54 @@
+- name: Mounting backup share
+  mount:
+    src: "{{ backup_share }}"
+    path: '{{ backup_mount_dir_minio }}'
+    state: mounted
+    fstype: nfs
+  changed_when: false
+
+- name: Minio volume backup directory
+  file:
+    state: directory
+    path: "{{ minio_backup_dir }}"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+    
+- name: Stopping Minio service
+  command:
+    cmd: 'docker compose down'
+    chdir: "{{ minio_compose_path }}"
+  changed_when: false
+
+- name: Backing up Minio volume to incremental
+  command:
+    cmd: "tar cvpf {{ minio_backup_dir }}/{{ lookup('pipe', 'date +%Y_%h_%d-%H-%M') }}_config.tar ."
+    chdir: "{{ minio_data_volume }}"
+  changed_when: false
+
+- name: Get volume backup list Minio
+  find:
+    paths: "{{ minio_backup_dir }}"
+    file_type: file
+  register: backups
+  failed_when: not backups.files
+
+- name: Setting values
+  set_fact:
+    oldest: "{{ backups.files | sort(attribute='mtime') | first }}"
+    file_count: "{{ backups.files | length }}"
+
+- name: Volume backups count Minio
+  debug:
+    msg: "The number of volume backups is {{ file_count }}"
+
+- name: Volume backups list
+  debug:
+    msg: "{{ backups.files }}"
+
+- name: Removing oldest backup Minio
+  file:
+    path: "{{ oldest.path }}"
+    state: absent
+  changed_when: false
+  when: file_count | int > volume_backups

@@ -1,0 +1,17 @@
+# glide.properties (for DB related properties, use glide.db.properties)
+
+glide.proxy.host = {{glide_host}}:{{snow_port}}
+glide.proxy.path = /
+glide.servlet.port = {{snow_port}}
+glide.cluster.node_name = {{node_name}}
+glide.db.pooler.connections = 32
+glide.db.pooler.connections.max = 32
+glide.sys.schedulers = 8
+glide.monitor.url = localhost
+glide.self.monitor.fast_stats = false
+glide.self.monitor.checkin.interval = 86400000
+glide.self.monitor.server_stats.interval = 86400000
+glide.self.monitor.fast_server_stats.interval = 86400000
+glide.installation.self_hosted=true
+glide.usageanalytics.central_instance=https://disabled.service-now.com
+glide.ua.downloader.central_instance=

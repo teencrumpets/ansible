@@ -1,0 +1,6 @@
+# ServiceNOW
+snow_db: "servicenow_16003"
+snow_port: "16003"
+fw_port: "16003/tcp"
+mysql_user: "mysql"
+snow_user: "servicenow"

@@ -1,0 +1,12 @@
+services:
+  postgres:
+    container_name: postgres
+    image: "postgres:{{postgres_version}}"
+    environment:
+      - POSTGRES_USER= "{{postgres_user}}"
+      - POSTGRES_PASSWORD= "{{Postgres_passwd}}"
+      - POSTGRES_DB= "{{postgres_db}}"
+    volumes:
+      - 'database:/var/lib/postgresql/data'
+    ports:
+      - "{{postgres_port}}:5432"

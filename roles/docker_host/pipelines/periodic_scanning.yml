@@ -1,0 +1,72 @@
+trigger: none
+
+schedules:
+  - cron: "0 0 14 * *"
+    displayName: Monthly Scheduled Run
+    branches:
+      include:
+        -  main
+    always: true
+    
+pool:
+  name: 's6_scheduled_24.04_2'
+
+variables:
+  - group: Ansible
+
+stages:
+  - stage: Continuous_Scanning
+    jobs:
+      - job: continuous_scanning
+        timeoutInMinutes: 300
+        displayName: Continuous Scanning
+    
+        steps:
+          - script: pipx upgrade --include-injected ansible
+            displayName: 'Upgrade pipx'
+            
+          - task: DownloadSecureFile@1
+            name: vault_key
+            displayName: 'Download SSH Key'
+            inputs:
+              secureFile: 'vault_key'
+         
+          - script: >
+              ansible-playbook dynamic-site.yml 
+              -e
+              "ENV=prod
+              role=docker_host
+              vcenter_datacenter=UCS-Lab
+              vm_folder=_ServerBuild
+              rm_hosts_file=/home/ado_build_agent/.ssh/known_hosts
+              vm_name=$(Agent.Name)
+              build_agent_name=$(Agent.Name)
+              run_ubuntu=''
+              vm_cleanup=true
+              mode=continuous_scanning
+              source_registry=registry.web.yuma.army.mil
+              artifact_drop=$(System.DefaultWorkingDirectory)"
+              --vault-password-file=$(vault_key.secureFilePath)
+            displayName: 'Image assessment'
+          
+          - task: CopyFiles@2
+            inputs:
+              sourceFolder: '$(System.DefaultWorkingDirectory)'
+              contents: |
+                **/*_malware.txt
+                **/*_sbom.json
+                **/*_vulnerabilities.json
+              targetFolder: '$(Build.ArtifactStagingDirectory)'
+              CleanTargetFolder: true
+              Overwrite: true
+
+          - task: PublishBuildArtifacts@1
+            inputs:
+              pathToPublish: '$(Build.ArtifactStagingDirectory)'
+              artifactName: artifacts
+              
+          - script: 'rm -rf $(Build.ArtifactStagingDirectory)'
+            displayName: 'remove artifacts'
+
+          - script: 'rm -rf $(Build.SourcesDirectory)'
+            displayName: 'remove artifacts from sources'

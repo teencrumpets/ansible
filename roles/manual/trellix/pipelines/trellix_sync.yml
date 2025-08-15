@@ -1,0 +1,121 @@
+trigger: none
+
+pool:
+  name: 'nec_ondemand_L'
+
+variables:
+  - group: Ansible
+
+steps:
+- script: python3 -m pip install --upgrade pip
+  displayName: 'Upgrade pip'
+
+- script: python3 -m pip install --upgrade ansible
+  displayName: 'Install ansible'
+
+- task: DownloadSecureFile@1
+  name: ssh_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: 'ypgansible_ssh'
+
+- task: DownloadSecureFile@1
+  name: vault_key_dev
+  displayName: 'Download Vault Key'
+  inputs:
+    secureFile: vault_key_dev
+
+- task: DownloadSecureFile@1
+  name: vault_key_prep
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: vault_key_prep
+
+- task: DownloadSecureFile@1
+  name: vault_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: vault_key
+
+- script: chmod 600 $(ssh_key.secureFilePath)
+  displayName: 'Setting SSH Key permisisons'
+
+- script: >
+    ansible-playbook
+    dynamic-inventory.yml
+    -e
+    "HOSTS=localhost
+    inventory_owner=$(inventory_owner)
+    inventory_group=$(inventory_group)
+    inventory_path=$(inventory_path)"
+    --vault-password-file=$(vault_key.secureFilePath)
+    --key-file '$(ssh_key.secureFilePath)'
+  displayName: 'Updating Inventory'
+
+- script: >
+    ansible-playbook site.yml
+    -i
+    $(inventory_path)/Lab-inventory.yml
+    -e
+    "HOSTS=ubuntu
+    role=trellix
+    mode=sync
+    ENV=dev"
+    --vault-password-file=$(vault_key_dev.secureFilePath)
+    --key-file '$(ssh_key.secureFilePath)'
+  displayName: 'Running Trellix Sync on Ubuntu Dev Systems'
+
+- script: >
+    ansible-playbook site.yml
+    -i
+    $(inventory_path)/Pre-Production-inventory.yml
+    -e
+    "HOSTS=ubuntu
+    role=trellix
+    mode=sync
+    ENV=prep"
+    --vault-password-file=$(vault_key_prep.secureFilePath)
+    --key-file '$(ssh_key.secureFilePath)'
+  displayName: 'Running Trellix Sync on Ubuntu Prep Systems'
+
+- script: >
+    ansible-playbook site.yml
+    -i
+    $(inventory_path)/inventory.yml
+    -e
+    "HOSTS=ubuntu
+    role=trellix
+    mode=sync
+    ENV=prod"
+    --vault-password-file=$(vault_key.secureFilePath)
+    --key-file '$(ssh_key.secureFilePath)'
+  displayName: 'Running Trellix Sync on Ubuntu Prod Systems'
+
+- script: >
+    ansible-playbook site.yml
+    -i
+    $(inventory_path)/Lab-inventory.yml
+    -e
+    "HOSTS=rhel
+    role=trellix
+    mode=sync
+    ENV=dev"
+    --vault-password-file=$(vault_key_dev.secureFilePath)
+    --key-file '$(ssh_key.secureFilePath)'
+  displayName: 'Running Trellix Sync on RHEL8 Dev Systems'
+
+- script: ansible-playbook site.yml -i $(inventory_path)/Pre-inventory.yml -e "HOSTS=rhel role=trellix mode=sync ENV=prep" --vault-password-file=$(vault_key_prep.secureFilePath) --key-file '$(ssh_key.secureFilePath)'
+  displayName: 'Running Trellix Sync on RHEL8 Prep Systems'
+
+- script: >
+    ansible-playbook site.yml
+    -i
+    $(inventory_path)/inventory.yml
+    -e
+    "HOSTS=rhel
+    role=trellix
+    mode=sync
+    ENV=prod"
+    --vault-password-file=$(vault_key.secureFilePath)
+    --key-file '$(ssh_key.secureFilePath)'
+  displayName: 'Running Trellix Sync on RHEL8 Prep Systems'

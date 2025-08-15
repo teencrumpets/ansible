@@ -1,0 +1,172 @@
+- name: Mounting backup share
+  mount:
+    src: "{{ backup_share }}"
+    path: '{{ backup_mount_dir_stigman }}'
+    state: mounted
+    fstype: nfs
+  changed_when: false
+
+- name: Mounting nfs_share
+  mount:
+    src: "{{ nfs_share }}"
+    path: "{{nec_svr_ops_dir_stigman}}"
+    state: mounted
+    fstype: nfs
+  changed_when: false
+  
+- name: Stigman mysql volume backup directory
+  file:
+    state: directory
+    path: "{{ stigman_mysql_backup_dir }}"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Stigman keycloak volume backup directory
+  file:
+    state: directory
+    path: "{{ stigman_keycloak_backup_dir }}"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Ensure compose file exists
+  stat:
+    path: "{{compose_path}}/compose.yaml"
+  register: compose_file_status
+
+- name: Ensuring service is down
+  command:
+    cmd: "docker compose down"
+    chdir: '{{ compose_path }}'
+  changed_when: false
+  when: (mode == "restore") and (compose_file_status.stat.exists)
+
+- name: Create compose file
+  template:
+    src: compose.yaml.j2
+    dest: '{{ compose_path }}/compose.yaml'
+    owner: ypgansible
+    group: docker
+    mode: 0550
+  when: (mode in ["deploy"]) or (not compose_file_status.stat.exists)
+
+- name: Ensuring any old home volumes are gone
+  command:
+    cmd: 'docker compose down -v'
+    chdir: '{{ compose_path }}'
+  failed_when: false
+  changed_when: false
+  when: (mode == "restore")
+
+- name: Create stigman service
+  command:
+    cmd: 'docker compose up -d --no-start'
+    chdir: '{{ compose_path }}'
+  changed_when: false
+
+- name: Copy truststore file
+  copy:
+    src: "{{ stigman_binary }}truststore.p12"
+    dest: "/var/lib/docker/volumes/{{stigman_volume}}/_data/"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+    remote_src: yes
+
+- name: Copy nginx.conf file
+  template:
+    src: nginx.conf.j2
+    dest: "/var/lib/docker/volumes/{{ stigman_webserver }}/_data/nginx.conf"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Copy cert.pem file
+  copy:
+    src: "{{ stigman_binary }}cert.pem"
+    dest: "/var/lib/docker/volumes/{{ stigman_webserver }}/_data/"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+    remote_src: yes
+
+- name: Create privkey.pem file
+  copy:
+    src: "{{ stigman_private }}"
+    dest: "/var/lib/docker/volumes/{{ stigman_webserver }}/_data/privkey.pem"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Copy dod-certs.pem file
+  copy:
+    src: "{{ stigman_binary }}dod-certs.pem"
+    dest: "/var/lib/docker/volumes/{{ stigman_webserver }}/_data/"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+    remote_src: yes
+
+- name: Copy stigman-html file
+  copy:
+    src: index.html
+    dest: "/var/lib/docker/volumes/{{ stigman_html }}/_data/"
+    owner: root
+    group: root
+    mode: 0774
+
+- name: Copy stigman_realm.json file
+  copy:
+    src: stigman_realm.json
+    dest: "/var/lib/docker/volumes/{{stigman_accessmanagement}}/_data/data/import/"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Copy create-x509-user.jar file
+  copy:
+    src: "{{ stigman_binary }}create-x509-user.jar"
+    dest: "/var/lib/docker/volumes/{{ stigman_accessmanagement }}/_data/providers/"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+    remote_src: yes
+
+- name: Get volume backup list keycloak
+  find:
+    paths: "{{ stigman_keycloak_restore_dir }}"
+    file_type: file
+  register: backups
+  when: (mode == "restore")
+
+- name: Get newest volume backup keycloak
+  set_fact:
+    newest: "{{ backups.files | sort(attribute='mtime') | last }}"
+  when: (mode == "restore")
+
+- name: Restore stigman-keycloak volume
+  command:
+    cmd: "tar xvpf {{ newest.path }}"
+    chdir: "/var/lib/docker/volumes/{{ stigman_accessmanagement }}"
+  changed_when: false
+  when: (mode == "restore")
+
+- name: Get volume backup list mysql
+  find:
+    paths: "{{ stigman_mysql_restore_dir }}"
+    file_type: file
+  register: backups
+  when: (mode == "restore")
+
+- name: Get newest volume backup mysql
+  set_fact:
+    newest: "{{ backups.files | sort(attribute='mtime') | last }}"
+  when: (mode == "restore")
+
+- name: Restore stigman_mysql volume
+  command:
+    cmd: "tar xvpf {{ newest.path }}"
+    chdir: "/var/lib/docker/volumes/{{ stigman_database }}"
+  changed_when: false
+  when: (mode == "restore")

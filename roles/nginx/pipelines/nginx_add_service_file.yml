@@ -1,0 +1,79 @@
+trigger: none
+
+pool:
+  name: 's6_ondemand_24.04'
+
+parameters:
+  - name: app_name
+    displayName: "Application name:"
+    type: string
+    
+  - name: app_ip
+    displayName: "Application IP:"
+    type: string
+
+  - name: app_port
+    displayName: "Application port:"
+    type: string
+      
+variables:
+  - group: Ansible
+
+  - group: YPG_Environment
+
+stages:
+  - stage: Approval_Stage
+    jobs:
+      - deployment: approval
+        displayName: Approval
+    
+        environment: 
+          name: "Dev"
+
+  - stage: Create_Nginx_Service_File
+    dependsOn: Approval_Stage
+    jobs:
+      - job: run_nginx_role
+        displayName: Run Nginx Role
+
+        steps:
+        - script: pipx upgrade --include-injected ansible
+          displayName: 'Upgrade pipx'
+
+        - script: rm -f ~/.ssh/known_hosts
+          displayName: 'Purging known hosts'
+
+        - task: DownloadSecureFile@1
+          name: ssh_key
+          displayName: 'Download SSH Key'
+          inputs:
+            secureFile: 'ypgansible_ssh'
+
+        - task: DownloadSecureFile@1
+          name: vault_key
+          displayName: 'Download SSH Key'
+          inputs:
+            secureFile: "vault_key_dev"
+
+        - script: chmod 600 $(ssh_key.secureFilePath)
+          displayName: 'Setting SSH Key permisisons'
+
+        - script: >
+            ansible-playbook site.yml 
+            -i $(inventory_path)/Lab-inventory.yml
+            -e"
+            HOSTS=$(docker_host_lab)
+            role=nginx
+            ENV='dev'
+            nginx_mode='add_service'
+            service_config='${{parameters.app_name}}.conf'
+            fqdn='${{parameters.app_name}}.lab.yuma.army.mil'
+            app_server=${{parameters.app_ip}}
+            app_port=${{parameters.app_port}}
+            run_docker=''" 
+            --vault-password-file=$(vault_key.secureFilePath) 
+            --key-file '$(ssh_key.secureFilePath)'
+          displayName: 'Running Nginx Role'
+
+        - bash: echo "Access Application through ${{parameters.app_name}}.lab.yuma.army.mil"
+          displayName: Application URL

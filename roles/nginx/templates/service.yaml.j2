@@ -1,0 +1,12 @@
+server {
+    server_name  {{ fqdn }};
+
+    listen 443 ssl;
+
+    include {{ ssl_config }}/*.conf;
+
+    location / {
+            proxy_pass http://{{ app_server }}:{{ app_port }};
+            include "{{ proxy_config }}/*.conf";
+    }
+}

@@ -1,0 +1,73 @@
+- import_role:
+    name: 'docker_host'
+  when: run_docker
+
+- name: Create Datahub compose directory
+  file:
+    state: directory
+    path: "{{ compose_path }}"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Get IP of {{ ansible_hostname }} for service file
+  set_fact:
+    datahub_ip: "{{ ansible_host }}"
+  when: datahub_mode in ["deploy", "update", "proxy_config"]
+
+- name: Add Datahub service file to Nginx
+  delegate_to: "{{ datahub_nginx_server }}"
+  block:
+    - name: Run add service in nginx
+      import_role:
+        name: 'nginx'
+      vars:
+        nginx_mode: "add_service"
+        service_config: "{{ datahub_service_file }}"
+        service_template: "{{ datahub_service_template }}"
+        fqdn: "{{ datahub_url }}"
+        app_server: "{{ datahub_ip }}"
+        app_port: "{{ datahub_ports }}"
+        api_port: "{{ datahub_api_port }}"
+  when: datahub_mode in ["deploy", "update", "proxy_config"]
+
+- name: Stopping Datahub service
+  command:
+    cmd: "docker compose down"
+    chdir: "{{ compose_path }}"
+  changed_when: false
+  when: datahub_mode in ["bounce", "update"]
+  
+- name: Create compose file
+  template:
+    src: compose.yaml.j2
+    dest: "{{ compose_path }}/compose.yaml"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+  when: datahub_mode in ["deploy", "update"]
+
+- name: Copy secrets file for Datahub
+  template:
+    src: secrets.yaml.j2
+    dest: "{{ compose_path }}/secrets.yaml"
+    owner: ypgansible
+    group: docker
+    mode: 0700
+  when: datahub_mode in ["update", "bounce", "deploy"]
+
+- name: Start Datahub service
+  command:
+    cmd: 'docker compose -f compose.yaml -f secrets.yaml up -d'
+    chdir: "{{ compose_path }}"
+  changed_when: false
+  when: datahub_mode in ["update", "bounce", "deploy"]
+
+- name: Remove secrets file for Datahub
+  file:
+    path: "{{ compose_path }}/secrets.yaml"
+    state: absent
+    
+- import_role:
+    name: 'container_health'
+  when: datahub_mode in ["update", "bounce", "deploy"]

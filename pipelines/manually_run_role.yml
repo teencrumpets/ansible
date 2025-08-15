@@ -1,0 +1,95 @@
+trigger: none
+
+pool:
+  name: 's6_ondemand_24.04'
+
+parameters:
+  - name: HOSTS
+    displayName: "Name of Server:"
+    type: string
+
+  - name: ENV
+    displayName: "Select Environment:"
+    type: string
+    default: dev
+    values:
+      - prod
+      - prep
+      - dev
+  
+  - name: role
+    displayName: "Select Role:"
+    type: string
+    values:
+      - ubuntu
+      - rhel8
+      - docker_host
+
+variables:
+  - group: Ansible
+
+  - name: vault
+    ${{ if eq(parameters.ENV, 'prod') }}:
+      value: "vault_key_inv"
+    ${{ if eq(parameters.ENV, 'prep') }}:
+      value: "vault_key_inv_prep"
+    ${{ if eq(parameters.ENV, 'dev') }}:
+      value: "vault_key_inv_dev"
+
+  - name: inventory
+    ${{ if eq(parameters.ENV, 'prod') }}:
+      value: "inventory.yml"
+    ${{ if eq(parameters.ENV, 'prep') }}:
+      value: "Pre-Production-inventory.yml"
+    ${{ if eq(parameters.ENV, 'dev') }}:
+      value: "Lab-inventory.yml"
+
+steps:
+- script: pipx upgrade --include-injected ansible
+  displayName: 'Upgrade pipx'
+
+- script: rm -f ~/.ssh/known_hosts
+  displayName: 'Purging known hosts'
+
+- task: DownloadSecureFile@1
+  name: ssh_key
+  displayName: 'Download ypgansible SSH Key'
+  inputs:
+    secureFile: 'ypgansible_ssh'
+
+- task: DownloadSecureFile@1
+  name: vault_key_inv
+  displayName: 'Download SSH Key for Inventory'
+  inputs:
+    secureFile: vault_key
+
+- script: chmod 600 $(ssh_key.secureFilePath)
+  displayName: 'Setting SSH Key permissisons'
+
+
+- script: >
+    ansible-playbook dynamic-inventory.yml 
+    -e
+    "HOSTS=localhost
+    inventory_owner=$(inventory_owner) 
+    inventory_group=$(inventory_group) 
+    inventory_path=$(inventory_path)" 
+    --vault-password-file=$(vault_key_inv.secureFilePath) 
+    --key-file '$(ssh_key.secureFilePath)'
+  displayName: 'Updating Inventory'
+
+- task: DownloadSecureFile@1
+  name: vault_key_inv_env
+  displayName: 'Download key for Server Environment'
+  inputs:
+    secureFile: $(vault)
+
+- script: >
+    ansible-playbook site.yml 
+    -i "$(inventory_path)/$(inventory)" 
+    -e "HOSTS=${{parameters.HOSTS}} 
+    role=${{parameters.role}} 
+    ENV=${{parameters.ENV}}" 
+    --vault-password-file=$(vault_key_inv_env.secureFilePath) 
+    --key-file '$(ssh_key.secureFilePath)'
+  displayName: 'Running Ansible'

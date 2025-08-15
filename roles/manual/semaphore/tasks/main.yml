@@ -1,0 +1,57 @@
+- import_role:
+    name: 'docker_host'
+  when: run_docker
+
+- name: Create Semaphore compose directory
+  file:
+    state: directory
+    path: /opt/compose/semaphore
+    group: docker
+    mode: 0774
+
+- name: Create compose file
+  template:
+    src: compose.yaml.j2
+    dest: /opt/compose/semaphore/compose.yaml
+    group: docker
+    mode: 0774
+
+- name: Create Semaphore service
+  command:
+    cmd: 'docker compose up -d --no-start'
+    chdir: /opt/compose/semaphore
+  changed_when: false
+
+- name: Inventory file permissions
+  file:
+    state: directory
+    path: /var/lib/docker/volumes/semaphore-inv/_data
+    owner: 1001
+    mode: 0744
+
+- name: Create Semaphore service
+  command:
+    cmd: 'docker compose up -d'
+    chdir: /opt/compose/semaphore
+  changed_when: false
+
+- name: Git SSL verify config
+  command:
+    cmd: 'docker exec semaphore sh -c "git config --global http.sslVerify false"'
+  changed_when: false
+
+- name: Building PAT string
+  command:
+    cmd: echo {{ ':' + semaphore_pat }}
+  changed_when: false
+  register: full_pat
+
+- name: Encoding PAT
+  command:
+    cmd: echo {{ full_pat.stdout | b64encode }}
+  changed_when: false
+  register: encoded_pat
+
+- name: Git http extra header config
+  shell: docker exec semaphore sh -c {{ '"git config --global http.extraHeader ' + "'" + "Authorization" + ':' + " Basic " + encoded_pat.stdout + "'" + '"' }}
+  changed_when: false

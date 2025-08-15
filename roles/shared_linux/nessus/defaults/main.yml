@@ -1,0 +1,8 @@
+#Variables
+install_nessus: false
+host_option: --host=6.2.2.4
+port_option: --port=8834
+group_option: --groups=YUMA
+rhel_nessus_file: NessusAgent-10.7.3-el8.x86_64.rpm
+ubuntu_nessus_file: NessusAgent-10.7.3-ubuntu1604_amd64.deb
+nessus_link_key: --key=eaa167a624dccea5b1f79284f17fb3b29c52f75158cb97bc8c941663635696ca

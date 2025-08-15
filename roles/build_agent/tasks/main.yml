@@ -1,0 +1,333 @@
+- import_role:
+    name: 'docker_host'
+  when: run_docker
+
+- name: Create backup mount directory
+  file:
+    state: directory
+    path: "{{nec_svr_ops_dir_build_agent}}"
+    owner: ypgansible
+    group: ypgansible
+    mode: 0770
+
+- name: Mounting nfs_share
+  mount:
+    src: "{{ nfs_share }}"
+    path: "{{nec_svr_ops_dir_build_agent}}"
+    state: mounted
+    fstype: nfs
+  changed_when: false
+
+- name: Add the build agent service account
+  user:
+    system: true
+    name: "{{ item.agent_account }}"
+    groups: sudo
+    shell: '/usr/sbin/nologin'
+  with_items: "{{build_agents}}"
+
+- name: Ensure Umask set correctly for build agent
+  lineinfile:
+    path: '/etc/login.defs'
+    line: "UMASK 022"
+    state: present
+    regexp: "(?i)^UMASK"
+        
+- name: Install Trivy signing key
+  command: 
+    cmd: curl -fsSL https://aquasecurity.github.io/trivy-repo/deb/public.key -o /etc/apt/keyrings/trivy.asc
+    creates: /etc/apt/keyrings/trivy.asc
+
+- name: Change trivy key file ownership
+  file:
+    path: /etc/apt/keyrings/trivy.asc
+    mode: 0644
+
+# - name: Add Trivy repo
+#   lineinfile:
+#     path: /etc/apt/sources.list.d/trivy.list
+#     line: 'deb [signed-by=/etc/apt/keyrings/trivy.asc] https://aquasecurity.github.io/trivy-repo/deb generic main'
+#     state: present
+#     regexp: '^(?!#).*aquasecurity\.github\.io\/trivy-repo\/deb'
+#     create: true
+#   register: trivy_repo
+
+- name: Add Trivy repo
+  lineinfile:
+    path: /etc/apt/sources.list.d/trivy.list
+    line: 'deb [trusted=yes] https://aquasecurity.github.io/trivy-repo/deb generic main'
+    state: present
+    regexp: '^(?!#).*aquasecurity\.github\.io\/trivy-repo\/deb'
+    create: true
+  register: trivy_repo
+  
+- name: Verify Trivy repo
+  replace:
+    path: /etc/apt/sources.list.d/trivy.list
+    regexp: '^(?!#).*aquasecurity\.github\.io\/trivy-repo\/deb'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+
+- name: Update apt
+  apt:
+    update_cache: yes
+  failed_when: false
+  when: trivy_repo.changed
+
+- name: Install Trivy
+  package: 
+    name: trivy
+    state: present 
+
+- name: Ensure acl installed
+  package:
+    name: acl
+    state: present
+
+- name: Ensure pipx installed
+  package:
+    name: pipx
+    state: present
+
+- name: Ensure ansible installed for ypgansible profile
+  community.general.pipx: 
+    name: ansible
+    state: present
+    install_deps : true
+  become_user: ypgansible
+
+- name: Ensure ansible installed for build agent profile 
+  community.general.pipx: 
+    name: ansible
+    state: present
+    install_deps : true
+  become_user: ado_build_agent
+
+- name: Inject dependencies into ansible pipx environment for build agent profile 
+  command: pipx inject ansible {{ item }}
+  become_user: ado_build_agent
+  loop:
+    - argcomplete
+    - requests
+    - 'pyvmomi'
+    - 'git+https://github.com/vmware/vsphere-automation-sdk-python.git'
+
+- name: Inject dependencies into ansible pipx environment for ypgansible profile 
+  command: pipx inject ansible {{ item }}
+  become_user: ypgansible
+  loop:
+    - argcomplete
+    - requests
+    - 'pyvmomi'
+    - 'git+https://github.com/vmware/vsphere-automation-sdk-python.git'
+
+- name: Ensure sshpass installed
+  package:
+    name: sshpass
+    state: present  
+
+- name: Ensure msodbcsql18 installed
+  package:
+    name: msodbcsql18
+    state: present
+  environment:
+    ACCEPT_EULA: "Y"
+  when: use_msodbcsql18
+
+- name: Ensure path for pipx for build agent profile 
+  command: 
+    cmd: pipx ensurepath
+  become_user: ado_build_agent
+
+- name: Ensure path for pipx for ypgansible profile 
+  command: 
+    cmd: pipx ensurepath
+  become_user: ypgansible
+
+- name: Configuring hosts file
+  lineinfile:
+    path: /etc/hosts
+    line: "{{ item.line }}"
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { line: '185.199.111.133 objects.githubusercontent.com', regexp: '^(?!#).*objects\.githubusercontent\.com' }
+
+- name: Verify hosts file
+  replace:
+    path: /etc/hosts
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  with_items:
+    - { regexp: '^(?!#).*objects\.githubusercontent\.com' }
+
+- name: Copy devops cert
+  copy:
+    src: "{{cert_path}}"
+    dest: /usr/local/share/ca-certificates/DoDRoot.crt
+    remote_src: true
+
+- name: Update ca-certs
+  command: update-ca-certificates
+  changed_when: false
+
+- name: Configure build agent user account
+  user:
+    name: "{{ item.agent_account }}"
+    groups: docker
+    append: yes
+  with_items: "{{ build_agents }}"
+
+- name: Set no password for agent account
+  lineinfile:
+    path: /etc/sudoers
+    state: present
+    line: "{{ item.agent_account }} ALL=(ALL) NOPASSWD: ALL"
+    regexp: "{{ item.agent_account }}"
+  with_items: "{{build_agents}}"
+
+- name: Configure agent directory
+  file: 
+    path: "/opt/build_agents/{{ item.name }}"
+    state: directory
+    owner: "{{item.agent_account}}"
+  with_items: "{{build_agents}}"
+  changed_when: false
+
+- name: Extract build agent installer
+  unarchive:
+    remote_src: yes
+    src: "{{nec_svr_ops_dir_build_agent}}/build_agent/vsts-agent-linux-x64-3.255.0.tar.gz"
+    dest: "/opt/build_agents/{{ item.name }}"
+    owner: "{{ item.agent_account }}"
+  with_items: "{{build_agents}}"
+
+- name: Check for svc.sh file
+  stat: 
+    path: "/opt/build_agents/{{ item.name }}/svc.sh"
+  register: check_file
+  loop: "{{build_agents}}"
+  loop_control: 
+    label: "{{item.name}}"
+
+- name: Filter for agents that need to be configured
+  set_fact:
+    agents_to_configure: "{{agents_to_configure | default([]) + [item.item]}}"
+  when: not item.stat.exists
+  loop: "{{check_file.results}}" 
+
+- name: Edit env script for ado build agents
+  become: false
+  lineinfile: 
+    line: export PATH=/home/{{item.agent_account}}/.local/bin:$PATH
+    path: "/opt/build_agents/{{ item.name }}/env.sh"
+    insertbefore: '(?i)^varCheckList'
+  with_items: "{{agents_to_configure}}"
+  when: agents_to_configure is defined
+
+- name: Verify - Edit env script for ado build agents
+  replace:
+    replace: '' 
+    regexp: '(?i)^export PATH=/home/{{item.agent_account}}/.local/bin:\$PATH'
+    path: "/opt/build_agents/{{ item.name }}/env.sh"
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  with_items: "{{agents_to_configure}}"
+  when: agents_to_configure is defined
+
+- name: Configure build agent
+  become: false
+  command: 
+    cmd: ./config.sh --unattended --url "{{ado_url}}" --pool "{{ item.agent_pool}}" --agent "{{item.name}}" --token "{{ado_pat}}"
+    chdir: "/opt/build_agents/{{ item.name }}"
+  become_user: "{{item.agent_account}}"
+  with_items: "{{agents_to_configure}}"
+  when: agents_to_configure is defined
+
+- name: Check for build agent service
+  shell: "systemctl list-units --all --type=service | grep {{ item.name }}.service"
+  register: check_service
+  changed_when: false
+  failed_when: false
+  loop: "{{build_agents}}"
+  loop_control: 
+    label: "{{item.name}}"  
+
+- name: Filter for agents that need to be installed
+  set_fact:
+    agents_to_install: "{{agents_to_install | default([]) + [item.item]}}"
+  when: item.rc == 1
+  loop: "{{check_service.results}}" 
+
+- name: Install build agent
+  command:
+    cmd: sudo ./svc.sh install
+    chdir: "/opt/build_agents/{{ item.name }}"
+  become_user: "{{item.agent_account}}"
+  with_items: "{{agents_to_install}}"
+  when: agents_to_install is defined
+
+- name: Ensure runsvc script exists for ado build agents
+  file:
+    path: "/opt/build_agents/{{ item.name }}/runsvc.sh"
+    state: touch
+    owner: "{{ item.agent_account }}"
+    group: "{{ item.agent_account }}"
+    mode: '0755'
+  with_items: "{{ agents_to_configure }}"
+  when: agents_to_configure is defined
+  
+- name: Edit runsvc script for ado build agents
+  become: false
+  blockinfile:  
+    block: |
+     if [ -f ./env.sh ]; then
+     source ./env.sh
+     fi
+    path: "/opt/build_agents/{{ item.name }}/runsvc.sh"
+    insertafter: '(?i)^# insert anything to setup env when running as a service'
+  with_items: "{{agents_to_configure}}"
+  when: agents_to_configure is defined  
+
+- name: Verify - Edit runsvc script for ADO build agents
+  replace:
+    path: "/opt/build_agents/{{ item.name }}/runsvc.sh"
+    regexp: |
+      (?ms)^if \[ -f \./env\.sh \]; then\n\s*source \./env\.sh\n\s*fi
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  with_items: "{{ agents_to_configure }}"
+  when: agents_to_configure is defined
+    
+- name: Start build agent
+  command:
+    cmd: sudo ./svc.sh start
+    chdir: "/opt/build_agents/{{ item.name }}"
+  become_user: "{{item.agent_account}}"
+  with_items: "{{build_agents}}"
+
+- name: Cleaning up mounts
+  mount:
+    src: "{{nfs_share}}"
+    path: "{{nec_svr_ops_dir_build_agent}}"
+    state: absent
+    fstype: nfs
+  changed_when: false
+
+- name: Reset Umask
+  lineinfile:
+    path: '/etc/login.defs'
+    line: "UMASK 077"
+    state: present
+    regexp: "(?i)^UMASK"

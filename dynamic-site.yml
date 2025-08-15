@@ -1,0 +1,113 @@
+- name: Preparing VM
+  hosts: localhost
+  gather_facts: no
+  become: true
+  collections:
+  - community.vmware
+  - ansible.utils
+
+  vars_files:
+    - environment/{{ ENV }}.yml
+    - environment/{{ ENV }}_vault.yml
+
+  tasks:
+    - name: vm_name is undefined, generating random VM name
+      set_fact:
+        vm_name: "ansible_deployment_{{ 99999999 | random | to_uuid }}"
+      when: vm_name is undefined
+    
+    - name: validation_group is undefined, setting validation group
+      set_fact:
+        validation_group: "no_group"
+      when: validation_group is undefined
+    
+    - name: rm_hosts_file variable is undefined, setting to false
+      set_fact:
+        rm_hosts_file: False
+      when: rm_hosts_file is undefined
+
+    - name: Purging known hosts file
+      file:
+        path: '{{ rm_hosts_file }}'
+        state: absent
+      when: rm_hosts_file
+    
+    - include_role:
+        name: vmware
+
+    - name: Adding dynamic host {{ vm_name }} with IP {{ gather_vm_info.instance.ipv4 }}
+      add_host:
+        name: "current-vm"
+        groups: "{{ validation_group }}"
+        ansible_host: "{{ gather_vm_info.instance.ipv4 }}"
+        ansible_user: ypgansible
+        host_key_checking: false
+      changed_when: false
+
+- name: Running {{ role }} role on {{ hostvars['localhost']['vm_name'] }}
+  hosts: current-vm
+  collections:
+  - community.vmware
+  - ansible.utils
+
+  vars_files:
+    - environment/{{ ENV }}.yml
+    - environment/{{ ENV }}_vault.yml
+  
+  tasks:
+    - name: vm_name var is undefined, looking up random name generated on localhost
+      set_fact:
+        vm_name: "{{ hostvars['localhost']['vm_name'] }}"
+      when: vm_name is undefined
+    
+    - name: rm_hosts_file variable is undefined, setting to false
+      set_fact:
+        rm_hosts_file: False
+      when: rm_hosts_file is undefined
+    
+    - name: Purging known hosts file
+      delegate_to: localhost
+      file:
+        path: '{{ rm_hosts_file }}'
+        state: absent
+      when: rm_hosts_file
+
+    - name: Importing role error handling block
+      block:
+        - name: Running role on current-vm
+          import_role:
+            name: '{{ role }}'
+
+      rescue:       
+        - set_fact:
+            role_failed: True
+
+    - set_fact:
+        role_failed: False
+      when: role_failed is undefined
+
+- name: Cleanup
+  hosts: localhost
+  gather_facts: no
+  become: true
+  collections:
+  - community.vmware
+  - ansible.utils
+
+
+  vars_files:
+    - environment/{{ ENV }}.yml
+    - environment/{{ ENV }}_vault.yml
+  
+  tasks:
+    - name: Removing {{ vm_name }}
+      import_role:
+        name: vmware
+      vars:
+        vm_state: 'absent'
+      when: vm_cleanup
+
+    - debug:
+        msg: "The role {{ role }} did not run successfully on {{ vm_name }}"
+      when: hostvars['current-vm']['role_failed']
+      failed_when: true

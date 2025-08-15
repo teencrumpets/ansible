@@ -1,0 +1,55 @@
+- block:
+  - name: Install krb5-user
+    package:
+      name: krb5-user
+      state: present
+
+  - name: Install cifs-utils
+    package:
+      name: cifs-utils
+      state: present
+      
+  - name: Create keytab file
+    expect:
+      command: ktutil
+      responses:
+        ktutil:
+          - "addent -password -p {{ado_pl_svc_account}}@NASW.DS.ARMY.MIL -k 1 -e AES256-SHA1"
+          - "wkt {{ keytab_dir }}"
+          - "quit"
+        Password: '{{ image_assessment_keytab_pw }}'
+
+  - name: Modify keytab file permissions
+    file:
+      path: "{{ keytab_dir }}"
+      owner: root
+      group: root
+      mode: 0770
+
+  - name: Create mount point nec_app
+    file:
+      state: directory
+      path: '{{image_assessment_share}}'
+
+  - name: Add nec_app mount to fstab
+    lineinfile:
+      path: /etc/fstab
+      line: '{{vuln_tracking_folder}} {{image_assessment_share}} cifs user,rw,sec=krb5 0 0'
+      regexp: '^(?i){{vuln_tracking_folder}}'
+      state: present
+
+  - name: Verify nec_app mount on fstab
+    replace:
+      path: /etc/fstab
+      regexp: '^(?i){{vuln_tracking_folder}}'
+      replace: ''
+    check_mode: yes
+    register: diff
+    changed_when: false
+
+  - name: Get_TGT
+    shell: 'kinit -l {{ticket_exp}} {{ado_pl_svc_account}}@NASW.DS.ARMY.MIL -kt {{ keytab_dir }}'
+
+  - name: Mount all
+    shell: 'mount -a'
+  delegate_to: localhost

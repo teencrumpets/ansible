@@ -1,0 +1,101 @@
+- name: pamd playbook - Configure /etc/pam.d/postlogin to show last successful account logon upon logon - V-230381
+  pamd:
+    name: postlogin
+    type: session
+    control: optional
+    module_path: pam_lastlog.so
+    module_arguments: 'showfailed'
+    new_type: session
+    new_control: required
+    state: updated
+  when: manage_rhel8_v_230381
+
+- name: pamd playbook - Verify that null passwords cannot be used in /etc/pam.d/system-auth - V-244540
+  replace:
+    path: /etc/pam.d/system-auth
+    regexp: '(?i)\snullok'
+    replace: ''
+  when: manage_rhel8_v_244540
+
+- name: pamd playbook - Verify that null passwords cannot be used in /etc/pam.d/password-auth - V-244541
+  replace:
+    path: /etc/pam.d/password-auth
+    regexp: '(?i)\snullok'
+    replace: ''
+  when: manage_rhel8_v_244541
+
+- name: pamd playbook - Configure /etc/pam.d/system-auth for the use of pam_faillock.so - V-244533
+  pamd:
+    name: system-auth
+    type: auth
+    control: sufficient
+    module_path: pam_unix.so
+    new_type: auth
+    new_control: required
+    new_module_path: pam_faillock.so
+    module_arguments: 'preauth'
+    state: before
+  when: manage_rhel8_v_244533
+
+- name: pamd playbook - Configure /etc/pam.d/system-auth for the use of pam_faillock.so - V-244533
+  pamd:
+    name: system-auth
+    type: auth
+    control: required
+    module_path: pam_deny.so
+    new_type: auth
+    new_control: required
+    new_module_path: pam_faillock.so
+    module_arguments: 'authfail'
+    state: before
+  when: manage_rhel8_v_244533
+
+- name: pamd playbook - Configure /etc/pam.d/system-auth for the use of pam_faillock.so - V-244533
+  pamd:
+    name: system-auth
+    type: account
+    control: required
+    module_path: pam_unix.so
+    new_type: account
+    new_control: required
+    new_module_path: pam_faillock.so
+    state: before
+  when: manage_rhel8_v_244533
+
+- name: pamd playbook - Configure /etc/pam.d/password-auth for the use of pam_faillock.so - V-244534
+  pamd:
+    name: password-auth
+    type: auth
+    control: sufficient
+    module_path: pam_unix.so
+    new_type: auth
+    new_control: required
+    new_module_path: pam_faillock.so
+    module_arguments: 'preauth'
+    state: before
+  when: manage_rhel8_v_244534
+
+- name: pamd playbook - Configure /etc/pam.d/password-auth for the use of pam_faillock.so - V-244534
+  pamd:
+    name: password-auth
+    type: auth
+    control: required
+    module_path: pam_deny.so
+    new_type: auth
+    new_control: required
+    new_module_path: pam_faillock.so
+    module_arguments: 'authfail'
+    state: before
+  when: manage_rhel8_v_244534
+
+- name: pamd playbook - Configure /etc/pam.d/system-auth for the use of pam_faillock.so - V-244534
+  pamd:
+    name: password-auth
+    type: account
+    control: required
+    module_path: pam_unix.so
+    new_type: account
+    new_control: required
+    new_module_path: pam_faillock.so
+    state: before
+  when: manage_rhel8_v_244533

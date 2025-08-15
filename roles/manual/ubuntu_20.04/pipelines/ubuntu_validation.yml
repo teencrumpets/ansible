@@ -1,0 +1,34 @@
+trigger: none
+
+pool:
+  name: 'nec_triggered_L'
+
+variables:
+  - group: Ansible
+
+steps:
+- script: python3 -m pip install --upgrade pip
+  displayName: 'Upgrade pip'
+
+- script: python3 -m pip install --upgrade ansible
+  displayName: 'Install ansible'
+
+- task: DownloadSecureFile@1
+  name: vault_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: 'vault_key_dev'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e
+    "ENV=dev
+    role=ubuntu
+    HOSTS=$(vm_name)
+    rm_hosts_file=/home/ado_build_agent/.ssh/known_hosts 
+    validation_group='ubuntu_validation'
+    vm_cleanup=true
+    check_vm=''
+    build_agent_name=$(Agent.Name)" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating Ubuntu Role'

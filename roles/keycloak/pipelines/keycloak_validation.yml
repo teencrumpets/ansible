@@ -1,0 +1,97 @@
+trigger: none
+
+pool:
+  name: 's6_triggered_24.04'
+
+variables:
+  - group: Ansible
+
+steps:
+- bash: echo "##vso[task.setvariable variable=vm_name]ansible_$(uuidgen)"
+  displayName: Generating hostname
+
+- script: echo $(vm_name)
+  displayName: Displaying hostname
+  
+- script: pipx upgrade --include-injected ansible
+  displayName: 'Upgrade pipx'
+
+- script: rm -f ~/.ssh/known_hosts
+  displayName: 'Purging known hosts'
+
+- task: DownloadSecureFile@1
+  name: vault_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: 'vault_key_dev'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e 
+    "ENV=dev
+    vm_name=$(Agent.Name)
+    rm_hosts_file=/home/ado_build_agent/.ssh/known_hosts  
+    role=keycloak 
+    keycloak_mode=deploy 
+    validation_group=keycloak_validation 
+    verify_hostname=''
+    vm_cleanup=true
+    build_agent_name=$(Agent.Name)" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating Keycloak Deploy'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e 
+    "ENV=dev
+    vm_name=$(Agent.Name)
+    rm_hosts_file=/home/ado_build_agent/.ssh/known_hosts
+    role=keycloak 
+    keycloak_mode=restore 
+    validation_group=keycloak_validation 
+    verify_hostname=''
+    build_agent_name=$(Agent.Name)" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating Keycloak Restore'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e 
+    "run_ubuntu='' 
+    run_docker=''
+    ENV=dev
+    vm_name=$(Agent.Name)
+    role=keycloak 
+    keycloak_mode=backup 
+    validation_group=keycloak_validation
+    build_agent_name=$(Agent.Name)" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating Keycloak Backup'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e 
+    "run_ubuntu='' 
+    run_docker=''
+    ENV=dev
+    vm_name=$(Agent.Name)
+    role=keycloak 
+    keycloak_mode=bounce 
+    validation_group=keycloak_validation
+    build_agent_name=$(Agent.Name)" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating Keycloak Bounce'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e 
+    "run_ubuntu='' 
+    run_docker=''
+    ENV=dev
+    vm_name=$(Agent.Name) 
+    role=keycloak 
+    keycloak_mode=update 
+    validation_group=keycloak_validation
+    build_agent_name=$(Agent.Name)" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating Keycloak Update'

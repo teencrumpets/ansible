@@ -1,0 +1,143 @@
+- name: Logging - Ensure RSYSLOG is installed V-238353
+  package:
+    name: rsyslog
+    state: present
+  when: manage_ubuntu_V_238353
+
+- name: Logging - Ensure RSYSLOG is enabled and running V-238353
+  service:
+    name: rsyslog
+    enabled: true
+    state: started
+  when: manage_ubuntu_V_238353
+
+- name: Logging - Configuring /etc/rsyslog.d/50-default.conf V-238324
+  lineinfile:
+    path: /etc/rsyslog.d/50-default.conf
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+    insertbefore: '^(?i)(?=[^#])([^\s])'
+    firstmatch: yes
+  with_items:
+    - { line: 'daemon.* /var/log/messages', regexp: '^(?i)daemon\.\*' }
+    - { line: 'auth.*,authpriv.* /var/log/secure', regexp: '^(?i)auth\.\*' }
+  notify: Restart RSYSLOG
+  when: manage_ubuntu_V_238324
+
+- name: Logging - Verify /etc/rsyslog.d/50-default.conf V-238324
+  replace:
+    path: /etc/rsyslog.d/50-default.conf
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '^(?i)daemon\.\*' }
+    - { regexp: '^(?i)auth\.\*' }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_238324
+
+- name: Logging - Log owner V-238339,V-238342
+  file:
+    path: "{{ item.path }}"
+    owner: "{{ item.owner }}"
+  with_items:
+    - { path: '/var/log', owner: "root", managed: "{{ manage_ubuntu_V_238339 }}" }
+    - { path: '/var/log/syslog', owner: "syslog", managed: "{{  manage_ubuntu_V_238342 }}" }
+  when: item.managed
+
+- name: Logging - Log directory group V-238338,V-238341
+  file:
+    path: "{{ item.path }}"
+    group: "{{ item.group }}"
+  with_items:
+    - { path: '/var/log', group: "syslog", managed: "{{ manage_ubuntu_V_238338 }}" }
+    - { path: '/var/log/syslog', group: "adm", managed: "{{ manage_ubuntu_V_238341 }}" }
+  when: item.managed
+
+- name: Logging - Log permissions V-238340,V-238343
+  file:
+    path: "{{ item.path }}"
+    mode: "{{ item.mode }}"
+  with_items:
+    - { path: '/var/log', mode: g-w,o-rwx, managed: "{{ manage_ubuntu_V_238340 }}" }
+    - { path: '/var/log/syslog', mode: "0640", managed: "{{ manage_ubuntu_V_238343 }}" }
+  when: item.managed
+
+- name: Logging - Overwrite log permissions V-238340
+  lineinfile:
+    path: /usr/lib/tmpfiles.d/00rsyslog.conf
+    line: 'z /var/log 0750 root syslog -'
+    state: present
+    regexp: '^(?i)z\s+\/var\/log\s+'
+  when: manage_ubuntu_V_238340
+
+- name: Logging - Verify overwrite log permissions V-238340
+  replace:
+    path: /usr/lib/tmpfiles.d/00rsyslog.conf
+    regexp: '^(?i)z\s+\/var\/log\s+'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_238340
+
+# Configures rsyslog config file to be able to send log traffic via TCP to syslog server
+- name: Logging - Configure /etc/rsyslog.conf
+  lineinfile:
+    path: /etc/rsyslog.conf
+    line: '*.* @@{{ syslog_ip }}:{{ syslog_port }}'
+    state: present
+    regexp: '^\*\.\*\s+@.*'
+  when: manage_auditlog_offloading
+  notify: Restart RSYSLOG
+
+- name: Logging - Verify /etc/rsyslog.conf
+  replace:
+    path: /etc/rsyslog.conf
+    regexp: '^\*\.\*\s+@.*'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_auditlog_offloading
+
+- name: Configure rsyslog.conf modules
+  lineinfile:
+    path: /etc/rsyslog.conf
+    state: present
+    insertbefore: BOF
+    line: '$ModLoad imfile'
+    regexp: '^(?i)\$ModLoad\simfile'
+  when: manage_auditlog_offloading
+  notify: Restart RSYSLOG
+
+- name: Verify /etc/rsyslog.conf module configuration
+  replace:
+    path: /etc/rsyslog.conf
+    regexp: '^(?i)\$ModLoad\simfile'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_auditlog_offloading
+
+# Remove obsolete parameters
+- name: Logging - Find and remove unnecessary lines
+  lineinfile: 
+    path: /etc/rsyslog.conf
+    state: absent
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { regexp: '^(?i)\$FileOwner' }
+    - { regexp: '^(?i)\$FileGroup' }
+    - { regexp: '^(?i)\$FileCreateMode' }
+    - { regexp: '^(?i)\$DirCreateMode' }
+    - { regexp: '^(?i)\$Umask' }
+    - { regexp: '^(?i)\$PrivDropToUser' }
+    - { regexp: '^(?i)\$PrivDropToGroup' }

@@ -1,0 +1,12 @@
+- hosts: "{{ HOSTS }}"
+  become: true
+  collections:
+  - community.vmware
+  - ansible.utils
+
+  vars_files:
+    - environment/{{ ENV }}.yml
+    - environment/{{ ENV }}_vault.yml
+
+  roles: 
+    - role: "{{ role }}"

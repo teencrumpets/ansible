@@ -1,0 +1,3 @@
+internal_Proxy: '6.2.56.23'
+#This ip is diff. from one used in hostvar because I dont think we want the ip for the valdation pipeline to be the prod server
+ip_Address: '6.2.9.166'

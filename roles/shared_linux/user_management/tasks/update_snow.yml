@@ -1,0 +1,21 @@
+- name: Copying script
+  copy:
+    src: ./scripts/user_management.py
+    dest: /home/ypgansible/user_management.py
+    mode: 0775
+  changed_when: false
+
+- name: Storing password hash and public ssh key in snow
+  command:
+    cmd: ./user_management.py -u "{{snow_user}}" -p "{{snow_pw}}" -w "{{snow_url}}" -s "{{ssh_public_key}}" -l "{{username}}" -o "{{hashed_password}}" -e "{{user_email}}" -t "{{user_mode}}"
+    chdir: /home/ypgansible
+  changed_when: false
+  ignore_errors: true
+  register: script
+  no_log: true
+
+- name: Cleaning up script
+  file:
+    state: absent
+    path: /home/ypgansible/user_management.py
+  changed_when: false

@@ -1,0 +1,11 @@
+- name: Trellix agent installation
+  import_tasks: install.yml
+  when: (mode == "install")
+
+- name: Trellix on demand scan
+  import_tasks: scan.yml
+  when: (mode == "scan")
+
+- name: Trellix sync
+  import_tasks: sync.yml
+  when: (mode == "sync")

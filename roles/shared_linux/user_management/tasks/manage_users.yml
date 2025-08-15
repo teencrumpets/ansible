@@ -1,0 +1,185 @@
+- name: Copying script
+  copy:
+    src: ./scripts/user_management.py
+    dest: /home/ypgansible/user_management.py
+    mode: 0775
+  changed_when: false
+
+- name: Gathering user information from snow
+  command:
+    cmd: python3 ./user_management.py --ansible_tag "{{user_mode}}" --user "{{snow_user}}" --password "{{snow_pw}}" --snow_url "{{snow_url}}" --hostname "{{hostname}}" --default_accounts "{{default_accounts}}" --service_accounts "{{host_accounts}}"
+    chdir: /home/ypgansible
+  changed_when: false
+  no_log: true
+  when: host_accounts is defined
+
+- name: Gathering user information from snow
+  command:
+    cmd: python3 ./user_management.py --ansible_tag "{{user_mode}}" --user "{{snow_user}}" --password "{{snow_pw}}" --snow_url "{{snow_url}}" --hostname "{{hostname}}" --default_accounts "{{default_accounts}}"
+    chdir: /home/ypgansible
+  changed_when: false
+  no_log: true
+  when: host_accounts is undefined
+
+- name: Get user json file
+  slurp: 
+    src: /home/ypgansible/users.json
+  register: json_file
+
+- name: 
+  set_fact:
+    user_list: "{{ json_file.content | b64decode | from_json }}"
+
+- name: Get users
+  getent:
+    database: passwd
+    split: ':'
+
+- name: Set list of usernames
+  set_fact:
+    all_users: "{{getent_passwd | dict2items | map(attribute='key') | list}}"
+
+- name: Set user list
+  set_fact:
+    parsed_user_list: []
+    
+- name: Parse user list from snow
+  set_fact: 
+    parsed_user_list: "{{ parsed_user_list + [user_list.users[indx].username] }}"
+  loop: "{{user_list.users}}"
+  loop_control:
+    index_var: indx
+  when: (hostname in user_list.users[indx].hosts) or ("all" in user_list.users[indx].hosts)
+
+- name: Remove user account
+  user:
+    name: '{{item}}'
+    state: absent
+    remove: true
+    force: true
+  loop: '{{all_users}}'
+  when: (item not in parsed_user_list) and (parsed_user_list is defined)
+
+- name: Get sudo users
+  shell: cat /etc/sudoers | grep NOPASSWD | awk '{print $1}'
+  register: sudo_users
+  changed_when: false
+
+- name: Remove user from no sudo password list
+  lineinfile: 
+    state: 'absent'
+    path: /etc/sudoers
+    regexp: '^{{item}}\s'
+  loop: '{{sudo_users.stdout_lines}}'
+  when: (item not in parsed_user_list and parsed_user_list is defined) or (not ssh_key)
+
+- name: Create/Modify user account
+  user:
+    name: "{{user_list.users[indx].username}}"
+    password: "{{user_list.users[indx].password_hash}}"
+    uid: "{{user_list.users[indx].uid}}"
+    shell: /bin/bash
+    password_expire_max: -1
+    password_expire_min: 1
+    groups: wheel
+    append: yes
+  loop: "{{user_list.users}}"
+  loop_control:
+    index_var: indx
+  no_log: true
+  when: (hostname in user_list.users[indx].hosts or "all" in user_list.users[indx].hosts) and (user_list.users[indx].password_hash) and (ansible_facts.distribution == 'RedHat')
+
+- name: Create/Modify user account
+  user:
+    name: "{{user_list.users[indx].username}}"
+    password: "{{user_list.users[indx].password_hash}}"
+    uid: "{{user_list.users[indx].uid}}"
+    shell: /bin/bash
+    password_expire_max: -1
+    password_expire_min: 1
+    groups: sudo
+    append: yes
+  loop: "{{user_list.users}}"
+  loop_control:
+    index_var: indx
+  no_log: true
+  when: (hostname in user_list.users[indx].hosts or "all" in user_list.users[indx].hosts) and (user_list.users[indx].password_hash) and (ansible_facts.distribution == 'Ubuntu')
+
+- name: Modify group id
+  group:
+    name: "{{user_list.users[indx].username}}"
+    gid: "{{user_list.users[indx].gid}}"
+  loop: "{{user_list.users}}"
+  loop_control:
+    index_var: indx
+  when: (hostname in user_list.users[indx].hosts or "all" in user_list.users[indx].hosts) and (user_list.users[indx].gid)
+
+- name: Modify home directory permissions 
+  file:
+    path: "/home/{{user_list.users[indx].username}}"
+    owner: "{{user_list.users[indx].username}}"
+    group: "{{user_list.users[indx].username}}"
+  loop: "{{user_list.users}}"
+  loop_control:
+    index_var: indx
+  when: (hostname in user_list.users[indx].hosts or "all" in user_list.users[indx].hosts) and (user_list.users[indx].password_hash)
+
+- name: Create authorized key directory
+  file: 
+    path: '/home/{{user_list.users[indx].username }}/.ssh'
+    state: directory
+    owner: "{{user_list.users[indx].username}}"
+    group: "{{user_list.users[indx].username}}"
+    mode: '0700'
+  loop: "{{user_list.users}}"
+  loop_control:
+    index_var: indx
+  changed_when: false
+  when: (hostname in user_list.users[indx].hosts or "all" in user_list.users[indx].hosts) and (user_list.users[indx].ssh) and (ssh_key)
+
+- name: Create authorized key file
+  lineinfile: 
+    path: '/home/{{user_list.users[indx].username }}/.ssh/authorized_keys'
+    state: present
+    create: true
+    line: ""
+    owner: "{{user_list.users[indx].username}}"
+    group: "{{user_list.users[indx].username}}"
+    mode: '0600'
+  loop: "{{user_list.users}}"
+  loop_control:
+    index_var: indx
+  changed_when: false
+  when: (hostname in user_list.users[indx].hosts or "all" in user_list.users[indx].hosts) and (user_list.users[indx].ssh) and (ssh_key)
+
+- name: Install public ssh key
+  authorized_key:
+    user: "{{user_list.users[indx].username}}"
+    key: "{{user_list.users[indx].ssh}}"
+  loop: "{{user_list.users}}"
+  loop_control:
+    index_var: indx
+  when: (hostname in user_list.users[indx].hosts or "all" in user_list.users[indx].hosts) and (user_list.users[indx].ssh) and (ssh_key)
+
+- name: Set no password for sudo
+  lineinfile:
+    path: /etc/sudoers
+    state: present
+    line: "{{user_list.users[indx].username}} ALL=(ALL) NOPASSWD: ALL"
+    regexp: "{{user_list.users[indx].username}}"
+  loop: "{{user_list.users}}"
+  loop_control:
+    index_var: indx
+  when: (hostname in user_list.users[indx].hosts or "all" in user_list.users[indx].hosts) and (user_list.users[indx].ssh) and (ssh_key)
+
+- name: Cleaning up script
+  file:
+    state: absent
+    path: /home/ypgansible/user_management.py
+  changed_when: false
+
+- name: Cleaning up json file
+  file:
+    state: absent
+    path: /home/ypgansible/users.json
+  changed_when: false

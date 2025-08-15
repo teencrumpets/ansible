@@ -1,0 +1,11 @@
+- name: Trellix collect and send properties
+  command: /opt/McAfee/agent/bin/cmdagent -p
+  ignore_errors: true
+
+- name: Pause for collection and send of properties
+  pause:
+    seconds: 10
+
+- name: Trellix check for new policies
+  command: /opt/McAfee/agent/bin/cmdagent -c
+  ignore_errors: true

@@ -1,0 +1,125 @@
+- name: grub playbook - Check that user.cfg file does not already exist - V-230234
+  stat:
+    path: /boot/efi/EFI/redhat/user.cfg
+  register: file_check
+  when: manage_rhel8_v_230234
+
+- name: grub playbook - Create config file for grub - V-230234
+  file:
+    path: /boot/efi/EFI/redhat/user.cfg
+    state: touch
+    owner: root
+    group: root
+    mode: '0700'
+  when: (file_check.stat.exists == false) and (manage_rhel8_v_230234)
+
+- name: grub playbook - Configure GRUB password - V-230234
+  lineinfile:
+    path: /boot/efi/EFI/redhat/user.cfg
+    line: 'GRUB2_PASSWORD={{ grub_hash }}'
+    state: present
+    regexp: '^(?i)GRUB2_PASSWORD='
+  notify: update_grub
+  when: manage_rhel8_v_230234
+
+- name: grub playbook - Verify /boot/efi/EFI/redhat/user.cfg - V-230234
+  replace:
+    path: /boot/efi/EFI/redhat/user.cfg
+    regexp: '^(?i)GRUB2_PASSWORD='
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_rhel8_v_230234
+
+- name: grub playbook - Check that /boot/grub2/user.cfg does not already exist - V-230235
+  stat:
+    path: /boot/grub2/user.cfg
+  register: file_check
+  when: manage_rhel8_v_230234
+
+- name: grub playbook - Create config file for /boot/grub2/user.cfg - V-230235
+  file:
+    path: /boot/grub2/user.cfg
+    state: touch
+    owner: root
+    group: root
+    mode: '0700'
+  when: (file_check.stat.exists == false) and (manage_rhel8_v_230235)
+
+- name: grub playbook - Configure /boot/grub2/user.cfg - V-230235
+  lineinfile:
+    path: /boot/grub2/user.cfg
+    line: 'GRUB2_PASSWORD={{ grub_hash }}'
+    state: present
+    regexp: '^(?i)GRUB2_PASSWORD='
+  notify: update_grub
+  when: manage_rhel8_v_230235
+
+- name: grub playbook - Verify /boot/grub2/user.cfg - V-230235
+  replace:
+    path: /boot/grub2/user.cfg
+    regexp: '^(?i)GRUB2_PASSWORD='
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_rhel8_v_230235
+
+- name: grub playbook - Configure GRUB account name - V-244521
+  replace:
+    path: /etc/grub.d/01_users
+    replace: 'GRUB'
+    regexp: 'root'
+  notify: update_grub
+  when: manage_rhel8_v_244521
+
+- name: grub playbook - Configure GRUB page_poison - V-230277
+  replace:
+    path: /etc/default/grub
+    replace: '\1 page_poison=1"'
+    regexp: '^(?i)(GRUB_CMDLINE_LINUX\s*=(?!.*page_poison=1).*)(\"$)'
+  when: manage_rhel8_v_230277
+  notify: grub_poison
+
+- name: grub playbook - Configure GRUB vsyscall - V-230278
+  replace:
+    path: /etc/default/grub
+    replace: '\1 vsyscall=none"'
+    regexp: '^(?i)(GRUB_CMDLINE_LINUX\s*=(?!.*vsyscall=none).*)(\"$)'
+  when: manage_rhel8_v_230278
+  notify: grub_vsyscall
+
+- name: grub playbook - Configure GRUB slub_debug - V-230279
+  replace:
+    path: /etc/default/grub
+    replace: '\1 slub_debug=P"'
+    regexp: '^(?i)(GRUB_CMDLINE_LINUX\s*=(?!.*slub_debug=P).*)(\"$)'
+  when: manage_rhel8_v_230279
+  notify: grub_slub
+
+- name: grub playbook - Configure GRUB audit - V-230468
+  replace:
+    path: /etc/default/grub
+    replace: '\1 audit=1"'
+    regexp: '^(?i)(GRUB_CMDLINE_LINUX\s*=(?!.*audit=1).*)(\"$)'
+  when: manage_rhel8_v_230468
+  notify: grub_audit
+
+- name: grub playbook - Configure GRUB audit_backlog - V-230469
+  replace:
+    path: /etc/default/grub
+    replace: '\1 audit_backlog_limit=8192"'
+    regexp: '^(?i)(GRUB_CMDLINE_LINUX\s*=(?!.*audit_backlog_limit=8192).*)(\"$)'
+  when: manage_rhel8_v_230469
+  notify: grub_backlog
+
+- name: grub playbook - Configure GRUB pti - V-230491
+  replace:
+    path: /etc/default/grub
+    replace: '\1 pti=on"'
+    regexp: '^(?i)(GRUB_CMDLINE_LINUX\s*=(?!.*pti=on).*)(\"$)'
+  when: manage_rhel8_v_230491
+  notify: grub_pti

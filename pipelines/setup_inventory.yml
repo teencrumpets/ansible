@@ -1,0 +1,37 @@
+trigger: none
+
+pool:
+  name: 's6_ondemand_24.04'
+
+variables:
+  - group: Ansible
+
+steps:
+- script: pipx upgrade --include-injected ansible
+  displayName: 'Upgrade pipx'
+  
+- task: DownloadSecureFile@1
+  name: ssh_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: 'ypgansible_ssh'
+
+- task: DownloadSecureFile@1
+  name: vault_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: 'vault_key'
+
+- script: chmod 600 $(ssh_key.secureFilePath)
+  displayName: 'Setting SSH Key permisisons'
+
+- script: >
+    ansible-playbook dynamic-inventory.yml 
+    -e
+    "HOSTS=localhost
+    inventory_owner=$(inventory_owner) 
+    inventory_group=$(inventory_group) 
+    inventory_path=$(inventory_path)" 
+    --vault-password-file=$(vault_key.secureFilePath) 
+    --key-file '$(ssh_key.secureFilePath)'
+  displayName: 'Updating Inventory'

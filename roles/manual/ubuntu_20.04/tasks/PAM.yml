@@ -1,0 +1,70 @@
+- name: PAM - Get list of files - V-251504
+  find:
+    paths: /etc/pam.d/
+    recurse: yes
+    file_type: file
+  register: pamd_configuration_files
+  when: manage_ubuntu_V_251504
+
+- name: PAM - Remove nullok from any pam.d files - V-251504
+  replace:
+    path: '{{ item.path }}'
+    regexp: '(?<!#)\bnullok\b'
+    replace: ''
+  loop: '{{ pamd_configuration_files.files }}'
+  when: manage_ubuntu_V_251504
+
+- name: PAM - Setting minimum password reuse - V-238234
+  replace:
+    path: '/etc/pam.d/common-password'
+    replace: '\1 remember=5'
+    regexp: (?i)^(password\s+\[success=\d\s+default=ignore\]\s+pam_unix\.so\s+obscure(?!.*remember).*)
+  when: manage_ubuntu_V_238234
+
+- name: PAM - Verifying minimum password reuse - V-238234
+  replace:
+    path: /etc/pam.d/common-password
+    regexp: '(?i)^password\s+\[success=\d\s+default=ignore\]\s+pam_unix\.so'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_238234
+
+- name: PAM - Configuring /etc/pam.d/common-auth - V-238237
+  lineinfile:
+    path: /etc/pam.d/common-auth
+    regexp: '^auth\s+required\s+pam_faildelay.so'
+    line: 'auth    required    pam_faildelay.so    delay=4000000'
+  when: manage_ubuntu_V_238237
+
+- name: PAM - Verifying /etc/pam.d/common-auth V-238237
+  replace:
+    path: /etc/pam.d/common-auth
+    regexp: '^auth\s+required\s+pam_faildelay.so'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_238237
+
+- name: PAM - Configuring /etc/pam.d/login - V-238373
+  lineinfile:
+    path: /etc/pam.d/login
+    regexp: '^session.+pam_lastlog\.so'
+    insertbefore: BOF
+    line: 'session     required      pam_lastlog.so showfailed'
+  when: manage_ubuntu_V_238373
+
+- name: PAM -  Verifying /etc/pam.d/login - V-238373
+  replace:
+    path: /etc/pam.d/login
+    regexp: '^session\s+required\s+pam_lastlog.so'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_238373

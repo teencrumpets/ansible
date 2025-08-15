@@ -1,0 +1,55 @@
+# Nifi variables
+nifi_validation: false
+registry_hostname: nifi-registry-dev.yuma.army.mil
+registry_auth_type: tls
+registry_keystore_path: ./conf/keystore.p12
+registry_keystore_type: PKCS12
+registry_keystore_pw: '{{ nifi_registry_dev_keystore_pw }}'
+registry_key_pw: '{{ nifi_registry_dev_key_pw }}'
+registry_truststore_path: ./conf/truststore.jks
+registry_truststore_type: JKS
+nifi_admin_dn: CN=ABITONG.AARON.ANTHONY.1468121197, OU=CONTRACTOR, OU=PKI, OU=DoD, O=U.S. Government, C=US
+nifi_registry_db: nifi_registry_db
+nifi_registry_conf: nifi_registry_conf
+
+harbor_url_for_nifi_registry: "registry.web.yuma.army.mil/library/nifi_registry"
+nifi_registry_version_tag: "latest_ypg_2025-04-09_23-01-43"
+harbor_url_for_nifi: "registry.web.yuma.army.mil/library/zookeeper"
+nifi_version_tag: "latest_ypg_2025-04-10_14-15-07"
+harbor_url_for_zookeeper: "registry.web.yuma.army.mil/library/zookeeper"
+zookeeper_version_tag: "latest_ypg_2025-04-09_23-00-48"
+
+nifi_managers:
+  - dev:
+    nifi_manager_dir: nifi_dev_manager
+    zk_host_name: dev_zookeeper
+    zk_version: latest
+    host_port: 2181
+    nifi_net: dev-nifi-net
+    nifi_flow_storage: dev_nifi_flow_storage
+
+nifi_nodes:
+  - dev1:
+    nifi_node_dir: nifi_dev_node1
+    host_name: nifi-dev.yuma.army.mil
+    nifi_port: 9449
+    container_port: 9449
+    cluster_port: 6445
+    socket_port: 5454
+    zk_connection: dev_zookeeper:2181
+    nifi_sensitive_key: '{{ nifi_dev_sensitive_key }}'
+    nifi_single_username: dev_user
+    nifi_single_userpw: '{{ nifi_dev_usercred_pw }}'
+    nifi_net: dev-nifi-net
+    nifi_volume: dev_nifi_volume
+    nifi_db: dev_nifi_db
+    nifi_flowrepo: dev_nifi_flowrepo
+    nifi_contentrepo: dev_nifi_contentrepo
+    nifi_provrepo: dev_nifi_provrepo
+    nifi_state: dev_nifi_state
+    nifi_logs: dev_nifi_logs
+    nifi_configuration: dev_nifi_configuration
+    nifi_store: dev_nifi_store
+    nifi_keystore: dev_keystore.p12
+    nifi_keystore_pw: '{{ nifi_dev_keystore_pw }}'
+    nifi_privkey_pw: '{{ nifi_dev_keypw }}'

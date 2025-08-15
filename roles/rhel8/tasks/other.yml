@@ -1,0 +1,136 @@
+- name: other playbook - Configure /etc/dnf/dnf.conf - V-230265
+  lineinfile:
+    path: /etc/dnf/dnf.conf
+    regexp: ^(?i)localpkg_gpgcheck\s=
+    line: localpkg_gpgcheck =True
+    state: present
+  when: manage_rhel8_v_230265
+
+- name: other plabook - Verify /etc/dnf/dnf.conf - V-230265
+  replace:
+    path: /etc/dnf/dnf.conf
+    regexp: ^(?i)localpkg_gpgcheck\s=
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_rhel8_v_230265
+
+- name: other playbook - Configure /etc/systemd/coredump.conf - V-230314, V-230315
+  lineinfile:
+    path: /etc/systemd/coredump.conf
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { line: 'Storage=none', regexp: '^(?i)Storage=', managed: "{{ manage_rhel8_v_230314 }}" }
+    - { line: 'ProcessSizeMax=0', regexp: '^(?i)ProcessSizeMax=', managed: "{{ manage_rhel8_v_230315 }}" }
+  when: item.managed
+
+- name: other playbook - Verify /etc/systemd/coredump.conf - V-230314, V-230315
+  replace:
+    path: /etc/systemd/coredump.conf
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '^(?i)Storage=', managed: "{{ manage_rhel8_v_230314 }}" }
+    - { regexp: '^(?i)ProcessSizeMax=', managed: "{{ manage_rhel8_v_230315 }}" }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed
+
+- name: other playbook - Configure /etc/chrony.conf - V-230484, V-230485, V-230486
+  lineinfile:
+    path: /etc/chrony.conf
+    insertbefore: BOF
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - {line: 'server 10.2.2.1 iburst maxpoll 16', regexp: '^(?i)server', managed: "{{ manage_rhel8_v_230484 }}" }
+    - {line: 'port 0', regexp: '^(?i)port', managed: "{{ manage_rhel8_v_230485 }}" }
+    - {line: 'cmdport 0', regexp: '^(?i)cmdport', managed: "{{ manage_rhel8_v_230486 }}" }
+  when: item.managed
+
+- name: other playbook - verify /etc/chrony.conf - V-230484, V-230485, V-230486
+  replace:
+    path: /etc/chrony.conf
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '^(?i)server', managed: "{{ manage_rhel8_v_230484 }}" }
+    - { regexp: '^(?i)port', managed: "{{ manage_rhel8_v_230485 }}" }
+    - { regexp: '^(?i)cmdport', managed: "{{ manage_rhel8_v_230486 }}" }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed
+
+- name: other playbook - Disable ctrl+alt+delete burst key sequence - V-230531
+  lineinfile:
+    path: /etc/systemd/system.conf
+    line: "CtrlAltDelBurstAction=none"
+    state: present
+    regexp: '^(?i)CtrlAltDelBurstAction='
+  when: manage_rhel8_v_230531
+
+- name: other playbook - Verify ctrl+alt+delete sequence is disabled - V-230531
+  replace:
+    path: /etc/systemd/system.conf
+    regexp: '^(?i)CtrlAltDelBurstAction='
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_rhel8_v_230531
+
+- name: other playbook - Remove tmux.sh - V-230349
+  file:
+    state: absent
+    path: /etc/profile.d/tmux.sh
+
+- name: other playbook - Remove tmux session lock configuration - V-230348, V-230353
+  file:
+    state: absent
+    path: /etc/tmux.conf
+
+- name: other playbook - Storage volume notification - V-244543
+  lineinfile:
+    path: /etc/audit/auditd.conf
+    line: space_left_action = email
+    state: present
+    regexp: ^(?i)space_left_action
+  when: manage_rhel8_v_244543
+
+- name: other playbook - Set a login delay after failed login attempt - V-230378
+  lineinfile:
+    path: /etc/login.defs
+    line: FAIL_DELAY 4
+    state: present
+    regexp: ^(?i)FAIL_DELAY
+  when: manage_rhel8_v_230378
+
+- name: other playbook - Remove default NTP pool /etc/chrony.conf - V-230484
+  lineinfile:
+    path: /etc/chrony.conf
+    state: absent
+    regexp: (?i)pool
+  when: manage_rhel8_v_230484
+
+- name: other playbook - Verify if faillock directory exists - V-250315
+  file:
+    path: /var/log/faillock
+    state: directory
+  register: diff
+
+- name: other playbook - Configure SElinux context type - V-250315
+  shell: |
+    mkdir /var/log/faillock
+    semanage fcontext -a -t faillog_t "/var/log/faillock(/.*)?"
+  when: (manage_rhel8_v_250315) and (diff.changed != false)
+  notify: fcontext

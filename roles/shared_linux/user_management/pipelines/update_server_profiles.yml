@@ -1,0 +1,78 @@
+trigger: none
+
+pool:
+  name: 's6_ondemand_24.04'
+
+variables:
+  - group: Ansible
+
+  - name: inventory
+    ${{ if eq(parameters.ENV, 'prod') }}:
+      value: "inventory.yml"
+    ${{ if eq(parameters.ENV, 'prep') }}:
+      value: "Pre-Production-inventory.yml"
+    ${{ if eq(parameters.ENV, 'dev') }}:
+      value: "Lab-inventory.yml"
+
+  - name: vault
+    ${{ if eq(parameters.ENV, 'prod') }}:
+      value: "vault_key"
+    ${{ if eq(parameters.ENV, 'prep') }}:
+      value: "vault_key_prep"
+    ${{ if eq(parameters.ENV, 'dev') }}:
+      value: "vault_key_dev"
+
+  - name: playbook_mode
+    value: "manage"
+
+parameters:
+  - name: HOSTS
+    displayName: "Name of Server:"
+    type: string
+
+  - name: ENV
+    displayName: "Select Environment:"
+    type: string
+    default: none
+    values:
+      - prod
+      - prep
+      - dev
+  
+  - name: Warning
+    displayName: "I understand any profile not configured for this server will be removed."
+    type: string
+    default: none
+    values:
+      - Yes
+
+steps:
+- script: pipx upgrade --include-injected ansible
+  displayName: 'Upgrade pipx'
+  
+- task: DownloadSecureFile@1
+  name: ssh_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: 'ypgansible_ssh' 
+
+- task: DownloadSecureFile@1
+  name: vault_key
+  displayName: 'Download Vault Key'
+  inputs:
+    secureFile: $(vault)
+
+- script: chmod 600 $(ssh_key.secureFilePath)
+  displayName: 'Setting SSH Key permissions'
+
+- script: >
+    ansible-playbook site.yml 
+    -i $(inventory_path)/$(inventory) 
+    -e 
+    "HOSTS=${{parameters.HOSTS}} 
+    user_mode=$(playbook_mode) 
+    ENV=${{parameters.ENV}} 
+    role=shared_linux/user_management" 
+    --vault-password-file=$(vault_key.secureFilePath)
+    --key-file '$(ssh_key.secureFilePath)'
+  displayName: 'deploying user_management role'

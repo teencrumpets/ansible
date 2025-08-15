@@ -1,0 +1,466 @@
+- name: security playbook - Configure /etc/security/faillock.conf - V-230333, V-230335, V-230337, V-230339, V-230341, V-230343, V-230345
+  lineinfile:
+    path: /etc/security/faillock.conf
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { line: 'deny = 3', regexp: '^(?i)deny\s*=', managed: "{{ manage_rhel8_v_230333 }}" }
+    - { line: 'fail_interval = 900', regexp: '^(?i)fail_interval\s*=', managed: "{{ manage_rhel8_v_230335 }}" }
+    - { line: 'unlock_time = 0', regexp: '^(?i)unlock_time\s*=', managed: "{{ manage_rhel8_v_230337 }}" }
+    - { line: 'dir = /var/log/faillock', regexp: '^(?i)dir\s*=', managed: "{{ manage_rhel8_v_230339 }}" }
+    - { line: 'silent', regexp: '^(?i)silent', managed: "{{ manage_rhel8_v_230341 }}" }
+    - { line: 'audit', regexp: '^(?i)audit', managed: "{{ manage_rhel8_v_230343 }}" }
+    - { line: 'even_deny_root', regexp: '^(?i)even_deny_root', managed: "{{ manage_rhel8_v_230345 }}" }
+  when: item.managed
+
+- name: security playbook - Verify /etc/security/faillock.conf - V-230333, V-230335, V-230337, V-230339, V-230341, V-230343, V-230345
+  replace:
+    path: /etc/security/faillock.conf
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '^(?i)deny\s=\s3', managed: "{{ manage_rhel8_v_230333 }}" }
+    - { regexp: '^(?i)fail_interval\s=\s900', managed: "{{ manage_rhel8_v_230335 }}" }
+    - { regexp: '^(?i)unlock_time\s=\s0', managed: "{{ manage_rhel8_v_230337 }}" }
+    - { regexp: '^(?i)dir\s=\s\/var\/log\/faillock', managed: "{{ manage_rhel8_v_230339 }}" }
+    - { regexp: '^(?i)silent', managed: "{{ manage_rhel8_v_230341 }}" }
+    - { regexp: '^(?i)audit', managed: "{{ manage_rhel8_v_230343 }}" }
+    - { regexp: '^(?i)even_deny_root', managed: "{{ manage_rhel8_v_230345 }}" }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed
+
+- name: security playbook - Configure /etc/security/limits.conf - V-230313, V-230346
+  lineinfile:
+    path: /etc/security/limits.conf
+    insertbefore: BOF
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { line: '* hard core 0', regexp: '^(?i)\*\shard\score\s0', managed: "{{ manage_rhel8_v_230313 }}" }
+    - { line: '* hard maxlogins 10', regexp: '^(?i)\*\shard\smaxlogins\s10', managed: "{{ manage_rhel8_v_230346 }}" }
+  when: item.managed
+
+- name: security playbook - Verify /etc/security/limits.conf - V-230313, V-230346
+  replace:
+    path: /etc/security/limits.conf
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '^(?i)\*\shard\score\s0', managed: "{{ manage_rhel8_v_230313 }}" }
+    - { regexp: '^(?i)\*\shard\smaxlogins\s10', managed: "{{ manage_rhel8_v_230346 }}" }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed
+
+- name: security playbook - Configure /etc/security/pwquality.conf - V-230357, V-230358, V-230359, V-230360, V-230361, V-230362, V-230363, V-230369, V-230375, V-230377, V-251716
+  lineinfile:
+    path: /etc/security/pwquality.conf
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { line: 'ucredit = -1', regexp: '^(?i)ucredit', managed: "{{ manage_rhel8_v_230357 }}" }
+    - { line: 'lcredit = -1', regexp: '^(?i)lcredit', managed: "{{ manage_rhel8_v_230358 }}" }
+    - { line: 'dcredit = -1', regexp: '^(?i)dcredit', managed: "{{ manage_rhel8_v_230359 }}" }
+    - { line: 'maxclassrepeat = 4', regexp: '^(?i)maxclassrepeat', managed: "{{ manage_rhel8_v_230360 }}" }
+    - { line: 'maxrepeat = 3', regexp: '^(?i)maxrepeat', managed: "{{ manage_rhel8_v_230361 }}" }
+    - { line: 'minclass = 4', regexp: '^(?i)minclass', managed: "{{ manage_rhel8_v_230362 }}" }
+    - { line: 'difok = 8', regexp: '^(?i)difok', managed: "{{ manage_rhel8_v_230363 }}" }
+    - { line: 'minlen = 15', regexp: '^(?i)minlen', managed: "{{ manage_rhel8_v_230369 }}" }
+    - { line: 'ocredit = -1', regexp: '^(?i)ocredit', managed: "{{ manage_rhel8_v_230375 }}" }
+    - { line: 'dictcheck=1', regexp: '^(?i)dictcheck', managed: "{{ manage_rhel8_v_230377 }}" }
+    - { line: 'retry = 3', regexp: '^(?i)retry', managed: "{{ manage_rhel8_v_251716 }}" }
+  when: item.managed
+
+- name: security playbook - Verify /etc/security/pwquality.conf - V-230357, V-230358, V-230359, V-230360, V-230361, V-230362, V-230363, V-230369, V-230375, V-230377, V-251716
+  replace:
+    path: /etc/security/pwquality.conf
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '^(?i)ucredit', managed: "{{ manage_rhel8_v_230357 }}" }
+    - { regexp: '^(?i)lcredit', managed: "{{ manage_rhel8_v_230358 }}" }
+    - { regexp: '^(?i)dcredit', managed: "{{ manage_rhel8_v_230359 }}" }
+    - { regexp: '^(?i)maxrepeat', managed: "{{ manage_rhel8_v_230361 }}" }
+    - { regexp: '^(?i)minclass', managed: "{{ manage_rhel8_v_230362 }}" }
+    - { regexp: '^(?i)difok', managed: "{{ manage_rhel8_v_230363 }}" }
+    - { regexp: '^(?i)minlen', managed: "{{ manage_rhel8_v_230369 }}" }
+    - { regexp: '^(?i)ocredit', managed: "{{ manage_rhel8_v_230375 }}" }
+    - { regexp: '^(?i)dictcheck', managed: "{{ manage_rhel8_v_230377 }}" }
+    - { regexp: '^(?i)retry', managed: "{{ manage_rhel8_v_251716 }}" }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed
+
+- name: security playbook - Configure /etc/login.defs - V-230233, V-230365, V-230366, V-230383
+  lineinfile:
+    path: /etc/login.defs
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items: 
+    - { line: 'SHA_CRYPT_MIN_ROUNDS 5000', regexp: '^(?i)SHA_CRYPT_MIN_ROUNDS', managed: "{{ manage_rhel8_v_230233 }}"}
+    - { line: 'PASS_MIN_DAYS 1', regexp: '^(?i)PASS_MIN_DAYS', managed: "{{ manage_rhel8_v_230365 }}"}
+    - { line: 'PASS_MAX_DAYS 60', regexp: '^(?i)PASS_MAX_DAYS', managed: "{{ manage_rhel8_v_230366 }}"}
+    - { line: 'UMASK 077', regexp: '^(?i)UMASK', managed: "{{ manage_rhel8_v_230383 }}"}
+  when: item.managed
+
+- name: security playbook - Verify /etc/login.defs - V-230233, V-230365, V-230366, V-230383
+  replace:
+    path: /etc/login.defs
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+  - { regexp: '^(?i)SHA_CRYPT_MIN_ROUNDS', managed: "{{ manage_rhel8_v_230233 }}"}
+  - { regexp: '^(?i)PASS_MIN_DAYS', managed: "{{ manage_rhel8_v_230365 }}"}
+  - { regexp: '^(?i)PASS_MAX_DAYS', managed: "{{ manage_rhel8_v_230366 }}"}
+  - { regexp: '^(?i)UMASK', managed: "{{ manage_rhel8_v_230383 }}"}
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed
+
+- name: security playbook - Configure /etc/modprobe.d/blacklist.conf - V-230494, V-230495, V-230496, V-230497, V-230498, V-230499, V-230503
+  lineinfile:
+    path: /etc/modprobe.d/blacklist.conf
+    create: yes
+    line: "{{ item.line }}"
+    regexp: "{{ item.regexp }}"
+    state: present
+  with_items:
+    - { line: 'install atm /bin/false', regexp: 'install\s*atm\s*', managed: "{{ manage_rhel8_v_230494 }}" }
+    - { line: 'blacklist atm', regexp: 'blacklist\s*atm', managed: "{{ manage_rhel8_v_230494 }}" }
+    - { line: 'install can /bin/false', regexp: 'install\s*can\s*', managed: "{{ manage_rhel8_v_230495 }}" }
+    - { line: 'blacklist can', regexp: 'blacklist\s*can', managed: "{{ manage_rhel8_v_230495 }}" }
+    - { line: 'install sctp /bin/false', regexp: 'install\s*sctp\s*', managed: "{{ manage_rhel8_v_230496 }}" }
+    - { line: 'blacklist sctp', regexp: 'blacklist\s*sctp', managed: "{{ manage_rhel8_v_230496 }}" }
+    - { line: 'install tipc /bin/false', regexp: 'install\s*tipc\s*', managed: "{{ manage_rhel8_v_230497 }}" }
+    - { line: 'blacklist tipc', regexp: 'blacklist\s*tipc', managed: "{{ manage_rhel8_v_230497 }}" }
+    - { line: 'install cramfs /bin/false', regexp: 'install\s*cramfs\s*', managed: "{{ manage_rhel8_v_230498 }}" }
+    - { line: 'blacklist cramfs', regexp: 'blacklist\s*cramfs', managed: "{{ manage_rhel8_v_230498 }}" }
+    - { line: 'install firewire-core /bin/false', regexp: 'install\s*firewire-core\s*', managed: "{{ manage_rhel8_v_230499 }}" }
+    - { line: 'blacklist firewire-core', regexp: 'blacklist\s*firewire-core', managed: "{{ manage_rhel8_v_230499 }}" } 
+    - { line: 'install usb-storage /bin/false', regexp: 'install\s*usb-storage\s*', managed: "{{ manage_rhel8_v_230503 }}" }
+    - { line: 'blacklist usb-storage', regexp: 'blacklist\s*usb-storage', managed: "{{ manage_rhel8_v_230503 }}" }
+  when: item.managed
+
+- name: security playbook - Verify /etc/modprobe.d/blacklist.conf - V-230494, V-230495, V-230496, V-230497, V-230498, V-230499, V-230503
+  replace:
+    path: /etc/modprobe.d/blacklist.conf
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '^(?i)install\satm\s\/bin\/false', managed: "{{ manage_rhel8_v_230494 }}" }
+    - { regexp: '^(?i)blacklist\satm', managed: "{{ manage_rhel8_v_230494 }}" }
+    - { regexp: '^(?i)install\scan\s\/bin\/false', managed: "{{ manage_rhel8_v_230495 }}" }
+    - { regexp: '^(?i)blacklist\scan', managed: "{{ manage_rhel8_v_230495 }}" }
+    - { regexp: '^(?i)install\ssctp\s\/bin\/false', managed: "{{ manage_rhel8_v_230496 }}" }
+    - { regexp: '^(?i)blacklist\ssctp', managed: "{{ manage_rhel8_v_230496 }}" }
+    - { regexp: '^(?i)install\stipc\s\/bin\/false', managed: "{{ manage_rhel8_v_230497 }}" }
+    - { regexp: '^(?i)blacklist\stipc', managed: "{{ manage_rhel8_v_230497 }}" }
+    - { regexp: '^(?i)install\scramfs\s\/bin\/false', managed: "{{ manage_rhel8_v_230498 }}" }
+    - { regexp: '^(?i)blacklist\scramfs', managed: "{{ manage_rhel8_v_230498 }}" }
+    - { regexp: '^(?i)install\sfirewire-core\s\/bin\/false', managed: "{{ manage_rhel8_v_230499 }}" }
+    - { regexp: '^(?i)blacklist\sfirewire-core', managed: "{{ manage_rhel8_v_230499 }}" } 
+    - { regexp: '^(?i)install\susb-storage\s\/bin\/false', managed: "{{ manage_rhel8_v_230503 }}" }
+    - { regexp: '^(?i)blacklist\susb-storage', managed: "{{ manage_rhel8_v_230503 }}" }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed
+
+- name: security playbook - Check that the /etc/usbguard/rules.conf exists - V-230524
+  stat:
+    path: /etc/usbguard/rules.conf
+  register: policy_file
+  when: manage_rhel8_v_230524
+
+- name: security playbook - Create USBGuard Policy configuration - V-230524
+  command: usbguard generate-policy
+  register: policy
+  when: (not policy_file.stat.exists or policy_file.stat.size == 0) and (manage_rhel8_v_230524)
+
+- name: security playbook - Copy the Generated Policy configuration to a persistent file - V-230524
+  copy:
+    content: '{{ policy.stdout }}'
+    dest: /etc/usbguard/rules.conf
+    mode: 384
+  when: (not policy_file.stat.exists or policy_file.stat.size == 0) and (manage_rhel8_v_230524)
+
+- name: security playbook - Add comment into /etc/usbguard/rules.conf when system has no USB devices - V-230524
+  lineinfile:
+    path: /etc/usbguard/rules.conf
+    line: '# No USB devices found'
+    state: present
+  when: (not policy_file.stat.exists or policy_file.stat.size == 0) and (manage_rhel8_v_230524)
+
+- name: security playbook - Enable service usbguard - V-230524
+  systemd:
+    name: usbguard
+    enabled: 'yes'
+    state: started
+    masked: 'no'
+  when: "manage_rhel8_v_230524"
+
+- name: security playbook - configure /etc/sudoers - V-237642, V-237643
+  lineinfile:
+    path: /etc/sudoers
+    line: "{{ item.line }}"
+    state: present
+  with_items: 
+    - { line: 'Defaults !targetpw', managed: "{{ manage_rhel8_v_237642 }}" }
+    - { line: 'Defaults !rootpw', managed: "{{ manage_rhel8_v_237642 }}" }
+    - { line: 'Defaults !runaspw', managed: "{{ manage_rhel8_v_237642 }}" }
+    - { line: 'Defaults timestamp_timeout=10',  managed: "{{ manage_rhel8_v_237643 }}" }
+  when: item.managed
+
+- name: security playbook - Verify /etc/sudoers - V-237642, V-237643
+  replace:
+    path: /etc/sudoers
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { line: 'Defaults !targetpw', regexp: '^(?i)Defaults\s!targetpw', managed: "{{ manage_rhel8_v_237642 }}" }
+    - { line: 'Defaults !rootpw', regexp: '^(?i)Defaults\s!rootpw', managed: "{{ manage_rhel8_v_237642 }}" }
+    - { line: 'Defaults !runaspw', regexp: '^(?i)Defaults\s!runaspw', managed: "{{ manage_rhel8_v_237642 }}" }
+    - { line: 'Defaults timestamp_timeout=10', regexp: '^(?i)Defaults\stimestamp_timeout=10', managed: "{{ manage_rhel8_v_237643 }}" }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed
+
+- name: security playbook - Set account password expiration day length - V-230373
+  lineinfile:
+    path: /etc/default/useradd
+    line: "INACTIVE=35"
+    state: present
+    regexp: '^(?i)INACTIVE='
+  when: manage_rhel8_v_230373
+
+- name: security playbook - Verify password expiration configuration - V-230373
+  replace:
+    path: /etc/default/useradd
+    regexp: '^(?i)INACTIVE='
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_rhel8_v_230373
+
+- name: security playbook - Define default permissions for login - V-230385
+  replace:
+    path: "{{ item.path }}"
+    replace: "{{ item.replace }}"
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - {path: '/etc/bashrc', replace: 'umask 077', regexp: 'umask\s[0-9][0-9][0-9]', managed: "{{ manage_rhel8_v_230385 }}" }
+    - {path: '/etc/csh.cshrc', replace: 'umask 077', regexp: 'umask\s[0-9][0-9][0-9]', managed: "{{ manage_rhel8_v_230385 }}" }
+    - {path: '/etc/profile', replace: 'umask 077', regexp: 'umask\s[0-9][0-9][0-9]', managed: "{{ manage_rhel8_v_230385 }}" }
+  when: item.managed
+
+- name: security playbook - Configure password min length - V-230370
+  lineinfile:
+    path: /etc/login.defs
+    line: PASS_MIN_LEN 15
+    state: present
+    regexp: ^(?i)PASS_MIN_LEN
+  when: manage_rhel8_v_230370
+
+- name: security playbook - Ensure gpgcheck is on globally - V-230264
+  ini_file:
+    dest: /etc/yum.conf
+    section: main
+    option: gpgcheck
+    value: '1'
+    no_extra_spaces: true
+    create: false
+  when: manage_rhel8_v_230264
+
+- name: security playbook - Grep for yum repo section names - V-230264
+  shell: |
+    set -o pipefail
+    grep -HEr '^\[.+\]' -r /etc/yum.repos.d/
+  register: repo_grep_results
+  failed_when: repo_grep_results.rc not in [0, 1]
+  changed_when: false
+  when: manage_rhel8_v_230264
+
+- name: security playbook - Set gpgcheck=1 for each yum repo - V-230264
+  ini_file:
+    path: '{{ item[0] }}'
+    section: '{{ item[1] }}'
+    option: gpgcheck
+    value: '1'
+    no_extra_spaces: true
+  loop: '{{ repo_grep_results.stdout | regex_findall( ''(.+\.repo):\[(.+)\]\n?'' ) }}'
+  when: manage_rhel8_v_230264
+
+- name: security playbook - Get all local users from /etc/passwd - V-230322
+  getent:
+    database: passwd
+    split: ':'
+  when: manage_rhel8_v_230322
+
+- name: security playbook - Create local_users variable from the getent ouput - V-230322
+  set_fact:
+    local_users: '{{ ansible_facts.getent_passwd|dict2items }}'
+  when: manage_rhel8_v_230322
+
+- name: security playbook - Test for existence of home directories to avoid creating them, but only fixing group ownership - V-230322
+  stat:
+    path: '{{ item.value[4] }}'
+  register: path_exists
+  loop: '{{ local_users }}'
+  when:
+  - item.value[1]|int >= 1000
+  - item.value[1]|int != 65534
+  - manage_rhel8_v_230322
+
+- name: security playbook - Ensure interactive local users are the group-owners of their respective home directories - V-230322
+  file:
+    path: '{{ item.0.value[4] }}'
+    group: '{{ item.0.value[2] }}'
+  loop: '{{ local_users|zip(path_exists.results)|list }}'
+  when: (item.1.stat is defined and item.1.stat.exists) and manage_rhel8_v_230322
+
+- name: security playbook - Get all local users from /etc/passwd - V-244531
+  ansible.builtin.getent:
+    database: passwd
+    split: ':'
+  when: manage_rhel8_v_244531
+
+- name: security playbook - Create local_users variable from the getent output - V-244531
+  ansible.builtin.set_fact:
+    local_users: '{{ ansible_facts.getent_passwd|dict2items }}'
+  when: manage_rhel8_v_244531
+
+- name: security playbook - Test for existence home directories to avoid creating them - V-244531
+  ansible.builtin.stat:
+    path: '{{ item.value[4] }}'
+  register: path_exists
+  loop: '{{ local_users }}'
+  when:
+  - item.value[1]|int >= 1000
+  - item.value[1]|int != 65534
+  - manage_rhel8_v_244531
+
+- name: security playbook - Ensure interactive local users have proper permissions on their respective home directories V- 244531
+  ansible.builtin.file:
+    path: '{{ item.0.value[4] }}'
+    mode: u-s,g-w-s,o=-
+    follow: false
+    recurse: true
+  loop: '{{ local_users|zip(path_exists.results)|list }}'
+  when: (item.1.stat is defined and item.1.stat.exists) and manage_rhel8_v_244531
+
+- name: security playbook - Configure rhel 8 to log out idle session - V-257258
+  lineinfile:
+    path: /etc/systemd/logind.conf
+    regexp: ^(?i)StopIdleSessionSec=
+    line: StopIdleSessionSec=600
+    state: present
+  notify: restart_logind
+  when: manage_rhel8_v_257258
+
+- name: security playbook - Verify /etc/systemd/logind.conf - V-257258
+  replace: 
+    path: /etc/systemd/logind.conf
+    regexp: ^(?i)StopIdleSessionSec=
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_rhel8_v_257258
+
+- name: security playbook - Get users - V-230364
+  getent:
+    database: shadow
+    split: ':'
+
+- name: security playbook - Set list of usernames - V-230364
+  set_fact:
+    all_users: "{{ getent_shadow | dict2items | map(attribute='key') | list }}"
+
+- name: security playbook - Create array of users to ignore in /etc/shadow
+  set_fact:
+    users_to_exclude:
+      - "bin"
+      - "daemon"
+      - "adm"
+      - "lp"
+      - "sync"
+      - "shutdown"
+      - "halt"
+      - "mail"
+      - "operator"
+      - "games"
+      - "ftp"
+      - "nobody"
+      - "dbus"
+      - "systemd-coredump"
+      - "systemd-resolve"
+      - "tss"
+      - "polkitd"
+      - "unbound"
+      - "sssd"
+      - "chrony"
+      - "sshd"
+      - "rcp"
+      - "rpcuser"
+
+- name: security playbook - Modify user's minimum password lifetime - V-230364
+  with_items: "{{ all_users }}"
+  user:
+    name: "{{ item }}"
+    password_expire_min: 1
+  when: (manage_rhel8_v_230364) and (item != 'users_to_exclude')
+
+- name: security playbook - Configure SSSD to prohibit the use of cached authentications after one day - V-230376
+  lineinfile:
+    path: /etc/sssd/sssd.conf
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+    create: yes
+  with_items:
+    - { line: '[pam]', regexp: '^(?i)\[pam\]', managed: "{{ manage_rhel8_v_230376 }}" }
+    - { line: 'offline_credentials_expiration = 1', regexp: '^(?i)offline_credentials_expiration', managed: "{{ manage_rhel8_v_230376 }}" }
+  when: item.managed
+
+- name: security playbook - Verify SSSD configuration - V-230376
+  replace:
+    path: /etc/sssd/sssd.conf
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '^(?i)\[pam\]', managed: "{{ manage_rhel8_v_230376 }}" }
+    - { regexp: '^(?i)offline_credentials_expiration', managed: "{{ manage_rhel8_v_230376 }}" }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed
+
+- name: Remove tmux conf file
+  file:
+    path: /etc/tmux.conf
+    state: absent
+
+- name: Remove tmux startup profile.d file
+  file:
+    path: /etc/profile.d/tmux.sh
+    state: absent

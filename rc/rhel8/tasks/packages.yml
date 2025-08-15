@@ -1,0 +1,41 @@
+- name: packages playbook - Copy dod certs script
+  copy:
+    src: ./scripts/dod-certs.sh
+    dest: /home/ypgansible/dod-certs.sh
+    mode: 0775
+    owner: ypgansible
+    group: ypgansible
+  changed_when: false
+
+- name: packages playbook - Install dod certs script
+  command:
+    cmd: ./dod-certs.sh
+    chdir: /home/ypgansible/
+  ignore_errors: true
+  changed_when: false
+
+- name: Cleaning up script
+  file:
+    state: absent
+    path: /home/ypgansible/dod-certs.sh
+  changed_when: false
+
+- name: Copying cmrs repo template
+  template:
+    src: custom_repo.j2
+    dest: /etc/yum.repos.d/cmrs.repo
+    owner: root
+    group: root
+    mode: 0600
+
+- name: packages playbook - Install CMRS DoD required packages for tagging
+  package:
+    name:
+    - adminorg-dod-mil--Global-Gov-UnitedStates-DOD-USA-ATEC-YPG--20250402120255000-0000067109
+    - ccsafa-dod-mil--Global-ARCYBER--20250402120255000-0000013041
+    - cndsp-dod-mil--Global-Gov-USCYBERCOM-C5ISRCSSP--20250402120255000-0000066209
+    - cocomaor-dod-mil--Global-USNORTHCOMAOR--20250402120255000-0000036996
+    - geolocation-dod-mil--Global-NOR-UNITE-ARZ-YUMA--20250402120255000-0000036727
+    - operationalaccreditation-dod-mil--Global-USA-ATEC-YPG-YPG-ICAN--20250402120255000-0000052924
+    - ownorg-dod-mil--Global-Gov-UnitedStates-DOD-USA-ATEC-YPG--20250402120255000-0000067109
+    state: present

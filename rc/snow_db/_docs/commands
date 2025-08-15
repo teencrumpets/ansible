@@ -1,0 +1,2 @@
+# run the below to skip verify hostname task in the rhel8 role this is useful if you are just testing with a server that you did not deploy SNOW
+ansible-playbook site.yml -e "HOSTS=mariadb role=snow_db ENV=dev ssh_key='' register=false verify_hostname='' mode=deploy" --ask-vault-pass

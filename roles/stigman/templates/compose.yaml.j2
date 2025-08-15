@@ -1,0 +1,96 @@
+services:
+  nginx:
+    container_name: "{{ nginx_container_name }}"
+    image: "{{ harbor_url_for_nginx }}:{{ nginx_version_tag }}"
+    restart: unless-stopped
+    volumes:
+      - 'stigman-nginx:/etc/nginx'
+      - 'stigman-html:/usr/share/nginx/html'
+    ports:
+    - "{{ stigman_port }}:443"
+    logging:
+      options:
+        tag: "{{ nginx_container_name }}"
+    networks:
+      - internal_net
+  keycloak:
+    container_name: "{{ keycloak_container_name }}"
+    image: "{{ harbor_url_for_keycloak }}:{{ keycloak_version_tag }}"
+    restart: unless-stopped
+    environment:
+      - KEYCLOAK_ADMIN={{ stigman_kc_adm_username }}
+      - KEYCLOAK_ADMIN_PASSWORD={{ stigman_kc_adm_pw }}
+      - KC_PROXY=edge
+      - KC_HOSTNAME_URL={{ stigman_kc_host_url }}
+      - KC_HOSTNAME_ADMIN_URL={{ stigman_kc_host_adm_url }}
+      - KC_SPI_X509CERT_LOOKUP_PROVIDER=nginx
+      - KC_SPI_X509CERT_LOOKUP_NGINX_SSL_CLIENT_CERT=SSL-CLIENT-CERT
+      - KC_SPI_TRUSTSTORE_FILE_FILE=/etc/truststore.p12
+      - KC_SPI_TRUSTSTORE_FILE_PASSWORD={{ stigman_kc_truststore_pw }}
+    command: start --import-realm
+    volumes:
+      - 'stigman-home:/etc'
+      - 'stigman-keycloak:/opt/keycloak'
+    logging:
+      options:
+        tag: "{{ keycloak_container_name }}"
+    networks:
+      - internal_net
+  stigman:
+    container_name: "{{ stigman_container_name }}"
+    image: "{{ harbor_url_for_stigman }}:{{ stigman_version_tag }}"
+    restart: unless-stopped
+    environment:
+      - STIGMAN_OIDC_PROVIDER={{ stigman_oidc_provider }}
+      - STIGMAN_CLIENT_OIDC_PROVIDER={{ stigman_client_oidc_provider}}
+      - STIGMAN_DB_HOST=mysql
+      - STIGMAN_DB_USER={{ stigman_db_user}}
+      - STIGMAN_DB_PASSWORD={{ stigman_db_pw }}
+      - STIGMAN_INIT_IMPORT_STIGS=true
+      - STIGMAN_SWAGGER_ENABLED=true
+      - STIGMAN_SWAGGER_SERVER={{ stigman_swagg_server}}
+      - STIGMAN_CLASSIFICATION=CUI
+      - STIGMAN_CLIENT_API_BASE=./api
+    init: true
+    logging:
+      options:
+        tag: "{{ stigman_container_name }}"
+    networks:
+      - internal_net
+  mysql:
+    container_name: "{{ mysql_container_name }}"
+    image: "{{ harbor_url_for_mysql }}:{{ mysql_version_tag }}"
+    restart: unless-stopped
+    command: --innodb-buffer-pool-size=512M --sort_buffer_size=64M 
+    environment:
+      - MYSQL_ROOT_PASSWORD={{ stigman_mysql_root_pw }}
+      - MYSQL_USER={{ stigman_mysql_user }}
+      - MYSQL_DATABASE={{ stigman_mysql_database }}
+      - MYSQL_PASSWORD={{ stigman_db_pw }}
+    volumes:
+      - 'stigman-mysql:/var/lib/mysql'
+    logging:
+      options:
+        tag: "{{ mysql_container_name }}" 
+    networks:
+      - internal_net    
+
+volumes:
+  stigman-nginx:
+    name: "{{ stigman_webserver }}"
+  stigman-html:
+    name: "{{ stigman_html }}"
+  stigman-home:
+    name: "{{ stigman_volume }}"
+  stigman-keycloak:
+    name: "{{ stigman_accessmanagement }}"
+  stigman-mysql:
+    name: "{{ stigman_database }}"
+
+networks:
+  internal_net:
+    driver: bridge
+    ipam:
+     driver: default
+     config:
+       - subnet: "{{ stigman_subnet }}"

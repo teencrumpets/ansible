@@ -1,0 +1,17 @@
+- name: Ensure python is installed
+  package:
+    name: python3
+    state: present
+  when: ansible_facts.distribution == 'RedHat'
+  
+- name: Update user information in snow
+  import_tasks: update_snow.yml
+  when: (user_mode == "update") or (user_mode == "newUser")
+
+- name: Manage users
+  import_tasks: manage_users.yml
+  when: user_mode == "manage"
+
+- name: Validate 
+  import_tasks: validate_user_management.yml
+  when: user_mode == "validation"

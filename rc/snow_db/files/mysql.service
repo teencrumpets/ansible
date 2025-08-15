@@ -1,0 +1,15 @@
+[Unit]
+Description=ServiceNow Mysql
+After=syslog.target
+ 
+[Service]
+Type=forking
+ExecStart=/etc/init.d/mysql start
+ExecStop=/etc/init.d/mysql stop
+ 
+User=mysql
+Group=mysql
+UMask=0007
+ 
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,57 @@
+- name: Mounting backup share
+  mount:
+    src: "{{ backup_share }}"
+    path: '{{ backup_mount_dir_harbor }}'
+    state: mounted
+    fstype: nfs
+  changed_when: false
+
+- name: harbor volume backup directory
+  file:
+    state: directory
+    path: "{{ harbor_backup_dir }}"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- import_role:
+    name: 'container_health'
+
+- name: Stopping harbor service
+  command:
+    cmd: 'docker compose down'
+    chdir: '{{ harbor_install_dir }}'
+  changed_when: false
+
+- name: Backing up harbor volume to incremental
+  command:
+    cmd: "tar cvpf {{ harbor_backup_dir }}/{{ lookup('pipe', 'date +%Y_%h_%d-%H-%M') }}_config.tar ."
+    chdir: "{{ harbor_install_dir }}"
+  changed_when: false
+
+- name: Get volume backup list harbor
+  find:
+    paths: "{{ harbor_backup_dir }}"
+    file_type: file
+  register: backups
+  failed_when: not backups.files
+
+- name: Setting values
+  set_fact:
+    oldest: "{{ backups.files | sort(attribute='mtime') | first }}"
+    file_count: "{{ backups.files | length }}"
+
+- name: Volume backups count harbor
+  debug:
+    msg: "The number of volume backups is {{ file_count }}"
+
+- name: Volume backups list
+  debug:
+    msg: "{{ backups.files }}"
+
+- name: Removing oldest backup harbor
+  file:
+    path: "{{ oldest.path }}"
+    state: absent
+  changed_when: false
+  when: file_count | int > volume_backups

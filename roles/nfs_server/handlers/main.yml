@@ -1,0 +1,2 @@
+- name: Re-Export NFS Shares
+  command: exportfs -ra

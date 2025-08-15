@@ -1,0 +1,95 @@
+trigger: none
+
+pool:
+  name: 's6_triggered_24.04'
+
+variables:
+  - group: Ansible
+
+steps:
+- script: pipx upgrade --include-injected ansible
+  displayName: 'Upgrade pipx'
+
+- script: rm -f ~/.ssh/known_hosts
+  displayName: 'Purging known hosts'
+
+- task: DownloadSecureFile@1
+  name: vault_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: 'vault_key_dev'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e 
+    "ENV=dev
+    vm_name=$(Agent.Name)
+    rm_hosts_file=/home/ado_build_agent/.ssh/known_hosts
+    role=keystone 
+    keystone_mode=deploy 
+    validation_group=keystone_validation
+    build_agent_name=$(Agent.Name)" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating Keystone deploy'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e 
+    "run_docker=''
+    check_vm=''
+    vm_cleanup=true
+    ENV=dev
+    run_dod_certs=''
+    vm_name=$(Agent.Name)
+    role=keystone 
+    keystone_mode=backup 
+    validation_group=keystone_validation 
+    verify_hostname=''
+    build_agent_name=$(Agent.Name)
+    ssh_key=''" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating Keystone backup'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e 
+    "ENV=dev
+    vm_name=$(Agent.Name)
+    rm_hosts_file=/home/ado_build_agent/.ssh/known_hosts
+    role=keystone 
+    keystone_mode=restore 
+    validation_group=keystone_validation 
+    build_agent_name=$(Agent.Name)" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating Keystone restore'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e
+    "run_docker=''
+    check_vm=''
+    ENV=dev
+    vm_name=$(Agent.Name)
+    role=keystone 
+    keystone_mode=bounce 
+    validation_group=keystone_validation 
+    verify_hostname=''
+    build_agent_name=$(Agent.Name)" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating Keystone bounce'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e
+    "run_docker=''
+    check_vm=''
+    vm_cleanup=true
+    ENV=dev
+    vm_name=$(Agent.Name)
+    role=keystone 
+    keystone_mode=update 
+    validation_group=keystone_validation 
+    verify_hostname=''
+    build_agent_name=$(Agent.Name)"    
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating Keystone update'

@@ -1,0 +1,26 @@
+- name: Parsing image parameters
+  set_fact:
+    image_name: "{{ image_repo | split('/') }}"
+    timestamp_tag: "{{ image_tag }}_ypg_{{ '%Y-%m-%d_%H-%M-%S' | strftime }}"
+
+- name: Generating image facts
+  set_fact:
+    source_image: '{{ source_registry }}/{{ image_repo }}:{{ image_tag }}'
+    harbor_push: '{{ harbor_name }}/{{harbor_project}}/{{ image_name[-1] }}:{{ timestamp_tag }}'
+
+- name: Login to Harbor
+  shell: 'docker login {{ harbor_name }} -u {{ harbor_service_account }} -p {{ harbor_service_account_pass }}'
+  no_log: true
+
+- name: 'Pulling {{ source_image }}'
+  shell: 'docker pull {{ source_image }}'
+  changed_when: false
+
+- name: 'Tag image with {{ harbor_push }}'
+  shell: 'docker tag {{ source_image }} {{ harbor_push }}'
+
+- name: Push image to Harbor
+  shell: 'docker push {{ harbor_push }}'
+
+- name: Cleaning up images
+  shell: docker image prune -a -f

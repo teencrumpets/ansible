@@ -1,0 +1,246 @@
+- name: Security - Set kernel.dmesg - V-270749
+  lineinfile:
+    path: '/etc/sysctl.conf'
+    line: 'kernel.dmesg_restrict = 1'
+    regexp: '(?i)^kernel.dmesg_restrict'
+  notify: Reload System Config Files
+  when: manage_ubuntu_V_270749
+
+- name: Security - Verify kernel.dmesg set - V-270749
+  replace:
+    path: '/etc/sysctl.conf'
+    regexp: '(?i)^kernel.dmesg_restrict'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_270749
+
+- name: Security - Configuring /etc/apt/apt.conf.d/50unattended-upgrades - V-270773
+  lineinfile:
+    path: '/etc/apt/apt.conf.d/50unattended-upgrades'
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - {line: 'Unattended-Upgrade::Remove-Unused-Dependencies "true";', regexp: '(?i)^Unattended-Upgrade::Remove-Unused-Dependencies'}
+    - {line: 'Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";', regexp: '(?i)^Unattended-Upgrade::Remove-Unused-Kernel-Packages'}
+  when: manage_ubuntu_V_270773
+
+- name: Security - Verify /etc/apt/apt.conf.d/50unattended-upgrades configuration - V-270773
+  replace:
+    path: /etc/apt/apt.conf.d/50unattended-upgrades
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - {regexp: '(?i)^Unattended-Upgrade::Remove-Unused-Dependencies'}
+    - {regexp: '(?i)^Unattended-Upgrade::Remove-Unused-Dependencies'}
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_270773
+
+- name:  Security - Ubuntu 24.04 LTS SSH client must be configured to use only message authentication codes and ciphers - V-270671, V-270670
+  lineinfile:
+      path: /etc/ssh/ssh_config
+      line: "{{ item.line }}"
+      regexp: "{{ item.regexp }}"
+      state: present
+  with_items:
+    - { line: 'MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256', regexp: '(?i)^MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256', managed: "{{ manage_ubuntu_V_270671 }}" }
+    - { line: 'Ciphers aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes128-ctr', regexp: '(?i)^Ciphers aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes128-ctr', managed: "{{ manage_ubuntu_V_270670 }}" }
+  when: item.managed
+
+- name: Security - Verify LTS SSH client configuration - V-270671, V-270670
+  replace:
+    path: /etc/ssh/ssh_config
+    replace: ''
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { regexp: '(?i)^MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256', managed: "{{ manage_ubuntu_V_270671 }}" }
+    - { regexp: '(?i)^Ciphers aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes128-ctr', managed: "{{ manage_ubuntu_V_270670 }}" }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed
+
+- name: Security - Set account password expiration day length - V-270683
+  lineinfile:
+    path: /etc/default/useradd
+    line: "INACTIVE=35"
+    state: present
+    regexp: '(?i)^INACTIVE='
+  when: manage_ubuntu_V_270683
+
+- name: Security - Verify password expiration configuration - V-270683
+  replace:
+    path: /etc/default/useradd
+    regexp: '(?i)^INACTIVE='
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_270683
+
+- name: Disable and mask ctrl-alt-del.target V-270712
+  systemd:
+    name: ctrl-alt-del.target
+    enabled: false
+    masked: true
+    daemon_reload: true
+  when: manage_ubuntu_V_270712
+
+- name: Security - Ubuntu 24.04 LTS SSH client must be configured to use only message authentication codes - V-270671
+  lineinfile:
+      path: /etc/ssh/ssh_config
+      line: 'MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256'
+      regexp: '(?i)^MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256'
+  when: manage_ubuntu_V_270671
+
+- name: Security - Verify 24.04 LTS SSH message authentication code configuration - V-270671
+  replace:
+    path: /etc/ssh/ssh_config
+    regexp: '(?i)^MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_270671
+
+- name: Security - Configuring /etc/security/pwquality.conf - V-270704, V-270726, V-270727, V-270728, V-270729, V-270732, V-270733   
+  lineinfile:
+    path: '/etc/security/pwquality.conf'
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { line: 'ucredit = -1', regexp: '(?i)^ucredit', managed: "{{ manage_ubuntu_V_270726 }}" }
+    - { line: 'lcredit= -1', regexp: '(?i)^lcredit', managed: "{{ manage_ubuntu_V_270727 }}" }
+    - { line: 'dcredit= -1', regexp: '(?i)^dcredit', managed: "{{ manage_ubuntu_V_270728 }}" }
+    - { line: 'difok= 8', regexp: '(?i)^difok', managed: "{{ manage_ubuntu_V_270729 }}" }
+    - { line: 'minlen= 15', regexp: '(?i)^minlen', managed: "{{ manage_ubuntu_V_270732 }}" }
+    - { line: 'ocredit= -1', regexp: '(?i)^ocredit', managed: "{{ manage_ubuntu_V_270733 }}" }
+    - { line: 'dictcheck= 1', regexp: '(?i)^dictcheck', managed: "{{ manage_ubuntu_V_270704 }}" }
+  when: item.managed
+  
+- name: Security - Verify /etc/security/pwquality.conf - V-270704, V-270726, V-270727, V-270728, V-270729, V-270732, V-270733
+  replace:
+    path: '/etc/security/pwquality.conf'
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '(?i)^ucredit', managed: "{{ manage_ubuntu_V_270726 }}" }
+    - { regexp: '(?i)^lcredit', managed: "{{ manage_ubuntu_V_270727 }}" }
+    - { regexp: '(?i)^dcredit', managed: "{{ manage_ubuntu_V_270728 }}" }
+    - { regexp: '(?i)^difok', managed: "{{ manage_ubuntu_V_270729 }}" }
+    - { regexp: '(?i)^minlen', managed: "{{ manage_ubuntu_V_270732 }}" }
+    - { regexp: '(?i)^ocredit', managed: "{{ manage_ubuntu_V_270733 }}" }
+    - { regexp: '(?i)^dictcheck', managed: "{{ manage_ubuntu_V_270704 }}" }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed
+
+- name: Security - Configuring /etc/pam.d/common-password - V-270705
+  lineinfile:
+    path: "{{item.path}}"
+    regexp: "{{item.regexp}}"
+    line: "{{item.line}}"
+    state: present
+    insertbefore: '^([^#&^\s])'
+  with_items:
+    - { path: '/etc/security/pwquality.conf', regexp: '(?i)^enforcing', line: 'enforcing = 1' }
+    - { path: '/etc/pam.d/common-password', regexp: '(?i)^password\s+requisite\s+pam_pwquality\.so\s+retry', line: 'password        requisite                       pam_pwquality.so retry=3' }
+  when: manage_ubuntu_V_270705
+
+- name: Security - Verify security/limits.conf - V-270705 
+  replace:
+    path: "{{item.path}}"
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { path: /etc/security/pwquality.conf, regexp: '(?i)^enforcing' }
+    - { path: '/etc/pam.d/common-password', regexp: '(?i)^password\s+requisite\s+pam_pwquality\.so\s+retry' }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_270705
+
+- name: Security - Clean up extra entry for pam_pwquality - V-270705 
+  replace:
+    path: '/etc/pam.d/common-password'
+    regexp: '^(?!password\s|^#|^\s).*'
+    replace: ''
+  when: manage_ubuntu_V_270705
+
+- name: Security - Verify the "/etc/sudoers" file has no occurrences of "NOPASSWD" or "!authenticate" - V-270707 
+  lineinfile:
+    path: '/etc/sudoers'
+    regexp: "{{ item.regexp }}"
+    state: absent
+  with_items:
+    - { regexp: '(?i)^.*NOPASSWD.*$', managed: "{{ manage_ubuntu_V_270707 }}" }
+    - { regexp: '(?i)^.*!authenticate.*$', managed: "{{ manage_ubuntu_V_270707 }}" }
+  when: manage_ubuntu_V_270707
+
+- name: Security - Password required for all accounts - V-270713
+  shell: awk -F":" '!$2 {print $1}' /etc/shadow
+  register: not_null_user
+  failed_when: not_null_user.stdout_lines
+  changed_when: false
+  when: manage_ubuntu_V_270713
+
+- name: Security - Get list of files from /etc/sysctl.d - V-270772
+  find:
+    paths: '/etc/sysctl.d'
+    recurse: yes
+    file_type: file
+  register: sysctl_files
+  when: manage_ubuntu_V_270772
+
+- name: Security - Ensure kernel.randomize_va_space is not in list of sysctl_files - V-270772
+  replace: 
+    path: '{{ item.path }}'
+    regexp: '(?i)^kernel\.randomize_va_space'
+  loop: '{{ sysctl_files.files }}' 
+  notify: Reload System Config Files
+  when: manage_ubuntu_V_270772
+
+- name: Security - Verify kernel.randomize_va_space is not in list of sysctl_files - V-270772
+  replace:
+    path: '{{ item.path }}'
+    regexp: 'kernel\.randomize_va_space'
+    replace: ''
+  loop: '{{ sysctl_files.files }}'
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg
+  ignore_errors: true
+  changed_when: false
+  when: manage_ubuntu_V_270772
+
+- name: Security - Ensure kernel.randomize_va_space is not in /etc/sysctl.conf - V-270772
+  replace: 
+    path: '/etc/sysctl.conf'
+    regexp: 'kernel\.randomize_va_space'
+  notify: Reload System Config Files
+  when: manage_ubuntu_V_270772
+
+- name: Security - Verify kernel.randomize_va_space is not in /etc/sysctl.conf - V-270772
+  replace:
+    path: '/etc/sysctl.conf'
+    regexp: 'kernel\.randomize_va_space'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg
+  ignore_errors: true
+  changed_when: false
+  when: manage_ubuntu_V_270772

@@ -1,0 +1,42 @@
+- import_role:
+    name: 'ubuntu'
+  when: run_ubuntu
+
+- name: Install required packages for NFS Server
+  package:
+    name:
+      - nfs-kernel-server
+      - nfs-common
+  register: nfs_install_result
+
+- name: Configure nfs-kernel-server.service
+  service:
+    name: nfs-kernel-server
+    state: started
+    enabled: true
+
+- name: Create /export directory
+  file:
+    path: /export
+    state: directory
+
+- name: Create paths for export
+  file:
+    path: "{{ item.path }}"
+    state: directory
+  when: item.enabled
+  with_items: "{{ nfs_exports }}"
+  loop_control:
+    loop_var: item
+
+- name: Add or remove export line
+  lineinfile:
+    path: /etc/exports
+    line: "{{ item.path }} {{ item.clients | join(' ') }}({{ item.options | join(',') }})"
+    state: "{{ item.enabled  | ternary('present', 'absent') }}"
+  with_items: "{{ nfs_exports }}"
+  loop_control:
+    loop_var: item
+  register: nfs_add_remove
+  notify:
+    - Re-Export NFS Shares 

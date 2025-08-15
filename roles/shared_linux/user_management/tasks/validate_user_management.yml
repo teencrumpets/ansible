@@ -1,0 +1,108 @@
+- name: set hostname
+  hostname: 
+    name: "{{ vm_name }}"
+  when: (vm_name is defined)
+
+- name: Copying validation script
+  copy:
+    src: ./scripts/user_management_validation.py
+    dest: /home/ypgansible/user_management_validation.py
+    mode: 0775
+  changed_when: false
+
+- name: Running validation script for setting up
+  command: 
+    cmd: ./user_management_validation.py -n "{{vm_name}}" -u "{{snow_user}}" -p "{{snow_pw}}" -z "setUp" -w "{{snow_url}}" -s "{{ssh_public_key}}" -o "{{hashed_password}}" -v "{{validation_script_args}}"
+    chdir: /home/ypgansible
+  changed_when: false
+  no_log: true
+  when: validate_mode == "setUp"
+
+- name: verifying ssh key is correct
+  command: cat /home/{{validation_script_args.username}}/.ssh/authorized_keys
+  changed_when: false
+  register: local_public_key
+  when: validate_mode == "addProfile"
+
+#the cut of 12 chars is to eliminate 'UMvalidate:' from the captured output
+- name: verifying pw hash is correct
+  shell: cat /etc/shadow | grep -i {{validation_script_args.username}} | cut -c 12- | rev | cut -c 20- | rev
+  changed_when: false
+  register: local_pw_hash
+  when: validate_mode == "addProfile"
+
+- name: Running addProfile part of script to VALIDATE the profile on server is same as record in snow
+  command:
+    cmd: ./user_management_validation.py -z "addProfile"  -u "{{snow_user}}" -p "{{snow_pw}}" -lp "{{local_pw_hash.stdout}}" -ls "{{local_public_key.stdout}}" -w "{{snow_url}}" -s "{{ssh_public_key}}" -o "{{hashed_password}}" -v "{{validation_script_args}}"
+    chdir: /home/ypgansible
+  changed_when: false
+  no_log: true
+  when: validate_mode == "addProfile"
+
+- name: verifying UPDATED ssh key is correct on local server to prove the profile has been updated
+  command: cat /home/{{validation_script_args.username}}/.ssh/authorized_keys
+  changed_when: false
+  register: local_public_key_updated
+  when: validate_mode == "updateProfile"
+  failed_when: ssh_public_key not in local_public_key_updated.stdout
+
+- name: verifying UPDATED pw hash is correct on local server to prove the profile has been updated
+  shell: cat /etc/shadow | grep -i {{validation_script_args.username}}
+  changed_when: false
+  register: local_pw_hash_updated
+  when: validate_mode == "updateProfile"
+  failed_when: hashed_password not in local_pw_hash_updated.stdout
+
+- name: Running newUserCheck part of script to VALIDATE the new user test worked
+  command:
+    cmd: ./user_management_validation.py -z "newUserCheck"  -u "{{snow_user}}" -p "{{snow_pw}}" -w "{{snow_url}}" -s "{{ssh_public_key}}" -o "{{hashed_password}}" -v "{{validation_script_args}}"
+    chdir: /home/ypgansible
+  changed_when: false
+  no_log: true
+  when: validate_mode == "newUserCheck"
+
+- name: Running updatePWCheck part of script to VALIDATE the update pw test worked
+  command:
+    cmd: ./user_management_validation.py -z "updatePWCheck"  -u "{{snow_user}}" -p "{{snow_pw}}"  -w "{{snow_url}}" -s "{{ssh_public_key}}" -o "{{hashed_password}}" -v "{{validation_script_args}}"
+    chdir: /home/ypgansible
+  changed_when: false
+  no_log: true
+  when: validate_mode == "updatePWCheck"
+
+- name: Running updateSSH Check part of script to VALIDATE the update SSH test worked
+  command:
+    cmd: ./user_management_validation.py -z "updateSSHCheck"  -u "{{snow_user}}" -p "{{snow_pw}}" -w "{{snow_url}}" -s "{{ssh_public_key}}" -o "{{hashed_password}}" -v "{{validation_script_args}}"
+    chdir: /home/ypgansible
+  changed_when: false
+  no_log: true
+  when: validate_mode == "updateSSHCheck"
+
+- name: Removing map record from SNOW
+  command:
+    cmd: ./user_management_validation.py -z "unMap"  -u "{{snow_user}}" -p "{{snow_pw}}" -w "{{snow_url}}" -v "{{validation_script_args}}"
+    chdir: /home/ypgansible
+  changed_when: false
+  no_log: true
+  when: validate_mode == "unMap"
+
+##Checking to make sure output is empty which means it did not find the user in /etc/shadow
+- name: Running removeProfile Check to VALIDATE removing profile worked
+  shell: cat /etc/shadow | grep -i {{username}} 
+  register: hashed_pw_after_removing_profile
+  changed_when: false
+  when: validate_mode == "validateRemoveProfileFromServer"
+  failed_when: hashed_pw_after_removing_profile.stdout | length > 0
+
+- name: Removing records from SNOW
+  command:
+    cmd: ./user_management_validation.py -z "removeAll"  -u "{{snow_user}}" -p "{{snow_pw}}" -w "{{snow_url}}" -v "{{validation_script_args}}"
+    chdir: /home/ypgansible
+  changed_when: false
+  no_log: true
+  when: validate_mode == "removeAll"
+
+- name: Cleaning up script
+  file:
+    state: absent
+    path: /home/ypgansible/user_management_validation.py
+  changed_when: false

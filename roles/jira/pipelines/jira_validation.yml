@@ -1,0 +1,109 @@
+trigger: none
+
+pool:
+  name: 's6_triggered_24.04'
+
+
+variables:
+  - group: Ansible
+
+steps:
+- bash: echo "##vso[task.setvariable variable=vm_name]ansible_$(uuidgen)"
+  displayName: Generating hostname
+
+- script: echo $(vm_name)
+  displayName: Displaying hostname
+
+- script: pipx upgrade --include-injected ansible
+  displayName: 'Upgrade pipx'
+
+- script: rm -f ~/.ssh/known_hosts
+  displayName: 'Purging known hosts'
+
+- task: DownloadSecureFile@1
+  name: vault_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: 'vault_key_dev'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e 
+    "ENV=dev
+    vm_cleanup=true
+    vm_name=$(Agent.Name)
+    run_dod_certs=''
+    allow_reboot=''
+    ssh_keys=''
+    rm_hosts_file=/home/ado_build_agent/.ssh/known_hosts
+    role=jira 
+    mode=deploy 
+    validation_group=jira_validation
+    build_agent_name=$(Agent.Name)" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating jira deploy'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e 
+    "ENV=dev
+    run_dod_certs=''
+    allow_reboot=''
+    ssh_keys=''
+    vm_name=$(Agent.Name)
+    rm_hosts_file=/home/ado_build_agent/.ssh/known_hosts
+    role=jira 
+    mode=restore 
+    validation_group=jira_validation 
+    build_agent_name=$(Agent.Name)" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating jira restore'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e 
+    "run_ubuntu=''
+    check_vm=''
+    ENV=dev
+    run_dod_certs=''
+    vm_name=$(Agent.Name)
+    role=jira 
+    mode=backup 
+    validation_group=jira_validation 
+    verify_hostname=''
+    build_agent_name=$(Agent.Name)
+    ssh_key=''" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating jira backup'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e
+    "run_ubuntu=''
+    check_vm=''
+    ENV=dev
+    vm_name=$(Agent.Name)
+    role=jira 
+    mode=bounce 
+    validation_group=jira_validation 
+    verify_hostname=''
+    build_agent_name=$(Agent.Name)
+    ssh_key=''" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating jira bounce'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e
+    "run_ubuntu=''
+    check_vm=''
+    vm_cleanup=true
+    ENV=dev
+    vm_name=$(Agent.Name)
+    role=jira 
+    mode=update 
+    validation_group=jira_validation 
+    verify_hostname='true'
+    build_agent_name=$(Agent.Name)"    
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating jira update'

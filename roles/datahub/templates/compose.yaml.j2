@@ -1,0 +1,118 @@
+services:
+  datahub:
+    image: "{{ harbor_url_for_datahub }}:{{ datahub_version_tag }}"
+    container_name: "{{ datahub_container_name }}"
+    healthcheck:
+      test: curl --fail -k "https://{{ datahub_url }}/healthcheck/" || exit 1
+      interval: 40s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
+    environment:
+      DATA_HUB_DB_NAME: "{{ DATA_HUB_DB_NAME }}"
+      DATA_HUB_SQL_HOST: "{{ DATA_HUB_SQL_HOST }}"
+      DATA_HUB_DB_USER: "{{ DATA_HUB_DB_USER }}"
+      WHSE_DB_NAME: "{{ WHSE_DB_NAME }}"      
+      WHSE_SQL_HOST: "{{ WHSE_SQL_HOST }}"
+      WHSE_DB_USER: "{{ WHSE_DB_USER }}"
+      ORG_DB_NAME: "{{ ORG_DB_NAME }}"
+      ORG_SQL_HOST: "{{ ORG_SQL_HOST }}"
+      ORG_DB_USER: "{{ ORG_DB_USER }}"
+      RTSS_DB_NAME: "{{ RTSS_DB_NAME }}"
+      RTSS_SQL_HOST: "{{ RTSS_SQL_HOST }}"
+      RTSS_DB_USER: "{{ RTSS_DB_USER }}"
+      SSIS_DB_NAME: "{{ SSIS_DB_NAME }}"
+      SSIS_SQL_HOST: "{{ SSIS_SQL_HOST }}"
+      SSIS_DB_USER: "{{ SSIS_DB_USER }}"
+      AUTHORITY : "{{ AUTHORITY }}"
+      CLIENT_ID : "{{ CLIENT_ID }}"
+      DOTNET_ENVIRONMENT: Production
+      ASPNETCORE_ENVIRONMENT: Production
+    networks:
+      - internal_net
+    ports:
+      - "{{ datahub_ports }}:8080"
+    logging:
+      options:
+        tag: {{ datahub_container_name }}
+
+  datahub.api:
+    image: "{{ harbor_url_for_datahub_api }}:{{ datahub_api_version_tag }}"
+    container_name: "{{ datahub_api_container_name }}"
+    healthcheck:
+      test: curl --fail -k "https://{{ datahub_url }}/api/healthcheck/" || exit 1
+      interval: 40s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
+    environment:
+      DATA_HUB_DB_NAME: "{{ DATA_HUB_DB_NAME }}"
+      DATA_HUB_SQL_HOST: "{{ DATA_HUB_SQL_HOST }}"
+      DATA_HUB_DB_USER: "{{ DATA_HUB_DB_USER }}"
+      WHSE_DB_NAME: "{{ WHSE_DB_NAME }}"      
+      WHSE_SQL_HOST: "{{ WHSE_SQL_HOST }}"
+      WHSE_DB_USER: "{{ WHSE_DB_USER }}"
+      SSIS_DB_NAME: "{{ SSIS_DB_NAME }}"
+      SSIS_SQL_HOST: "{{ SSIS_SQL_HOST }}"
+      SSIS_DB_USER: "{{ SSIS_DB_USER }}"
+      DOTNET_ENVIRONMENT: Production
+    networks:
+      - internal_net
+    ports:
+      - "{{ datahub_api_port }}:8080"
+    logging:
+      options:
+        tag: {{ datahub_api_container_name }}
+
+  datahub.hangfire:
+    image: "{{ harbor_url_for_hangfire }}:{{ hangfire_version_tag }}"
+    container_name: "{{ hangfire_container_name }}"
+    networks:
+      - internal_net
+    volumes:
+      - cifs_volume_datahub:/data-hub/DataHub
+      - cifs_volume_dpb:/data-hub/DPB
+      - cifs_volume_ai:/data-hub/AI  
+    environment:
+      DATA_HUB_DB_NAME: "{{ DATA_HUB_DB_NAME }}"
+      DATA_HUB_SQL_HOST: "{{ DATA_HUB_SQL_HOST }}"
+      DATA_HUB_DB_USER: "{{ DATA_HUB_DB_USER }}"
+      WHSE_DB_NAME: "{{ WHSE_DB_NAME }}"      
+      WHSE_SQL_HOST: "{{ WHSE_SQL_HOST }}"
+      WHSE_DB_USER: "{{ WHSE_DB_USER }}"
+      SSIS_DB_NAME: "{{ SSIS_DB_NAME }}"
+      SSIS_SQL_HOST: "{{ SSIS_SQL_HOST }}"
+      SSIS_DB_USER: "{{ SSIS_DB_USER }}"
+      DOTNET_ENVIRONMENT: Production
+      ASPNETCORE_ENVIRONMENT: Production
+    healthcheck: 
+      test: ps -ef | grep -i hangfire | grep -v grep
+      start_period: 60s
+    logging:
+      options:
+        tag: {{ hangfire_container_name }}
+          
+networks:
+  internal_net:
+    driver: bridge
+    ipam:
+     driver: default
+     config:
+       - subnet: "{{ datahub_subnet }}"
+
+volumes: 
+  cifs_volume_datahub:
+    driver: local
+    driver_opts:
+      type: cifs 
+      device: "{{ SHARE_DATA_HUB }}"
+  cifs_volume_dpb:
+    driver: local
+    driver_opts:
+      type: cifs 
+      device: "{{ SHARE_DPB }}"
+  cifs_volume_ai:
+    driver: local
+    driver_opts:
+      type: cifs 
+      device: "{{ SHARE_AI }}"

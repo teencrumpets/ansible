@@ -1,0 +1,173 @@
+- name: packages playbook - Ensure server registered
+  command: subscription-manager status
+  register: subscription
+  failed_when: false
+  changed_when: false
+
+- name: packages playbook - Set hostname build validation
+  hostname: 
+    name: "{{ agent_name | lower}}"
+  when: (agent_name) and (register)
+
+- name: packages playbook - Set hostname
+  hostname: 
+    name: "{{ HOSTS | lower}}"
+  when: (not agent_name) and (register)
+
+- name: Ensure redhat.repo file is removed
+  file:
+    path: /etc/yum.repos.d/redhat.repo
+    state: absent
+  when: (subscription.rc == 1) and (register)
+
+- name: packages playbook - Register server
+  shell: "curl -sSk {{rhss_register}} -H 'Authorization: Bearer {{rhss_auth}}'| bash"
+  when: (subscription.rc == 1) and (register)
+
+- name: packages playbook - Update dnf
+  dnf:
+    update_cache: yes
+  failed_when: false
+  changed_when: false
+
+- name: packages playbook - Ensure powershell is installed
+  package:
+    name: powershell
+    state: present
+
+- name: packages playbook - Install nfs-utils
+  package:
+    name: nfs-utils
+    state: present
+
+- name: packages playbook - Ensure chrony is installed
+  package:
+    name: chrony
+    state: present
+
+- name: packages playbook - Ensure python is installed
+  package:
+    name: python3
+    state: present
+
+- name: packages playbook - Ensure postfix is uninstalled - V-230550
+  package:
+    name: postfix
+    state: absent
+  when: manage_rhel8_v_230550
+
+- name: packages playbook - Ensure rsyslog is installed - V-230228
+  package:
+    name: rsyslog
+    state: present
+  when: manage_rhel8_v_230228
+
+- name: packages playbook - Ensure opensc is installed - V-230275
+  package:
+    name: opensc
+    state: present
+  when: manage_rhel8_v_230275
+
+- name: packages playbook - Ensure rsyslog-gnutls is installed - V-230478
+  package:
+    name: rsyslog-gnutls
+    state: present
+  when: manage_rhel8_v_230478
+
+- name: packages playbook - Ensure fapolicyd is installed - V-230523
+  package:
+    name: fapolicyd
+    state: present
+  when: manage_rhel8_v_230523
+
+- name: packages playbook - Ensure fapolicy is enabled and running - V-244545
+  service:
+    name: fapolicyd
+    enabled: true
+    state: started
+  when: manage_rhel8_v_244545
+
+- name: packages playbook - Ensure rng-tools is removed - V-244527, V-230285
+  package:
+    name: rng-tools
+    state: absent
+  when: manage_rhel8_v_244527
+
+- name: packages playbook - Ensure tmux is removed - V-244537
+  package:
+    name: tmux
+    state: absent
+  when: manage_rhel8_v_244537
+
+- name: packages playbook - Ensure usbguard is installed - V-244547, V-244548
+  package:
+    name: usbguard.x86_64
+    state: present
+  when: manage_rhel8_v_244547
+
+- name: packages playbook - Ensure usbguard is enabled and running - V-244547, V-244548
+  service:
+    name: usbguard.service
+    enabled: true
+    state: started
+  when: manage_rhel8_v_244548
+
+- name: packages playbook - Ensure iprutils is uninstalled - V-230560
+  package:
+    name: iprutils
+    state: absent
+  when: manage_rhel8_v_230560
+
+- name: packages playbook - Ensure tuned is uninstalled - V-230561
+  package:
+    name: tuned
+    state: absent
+  when: manage_rhel8_v_230561
+
+- name: packages playbook - Ensure kdump is disabled - V-230310
+  service:
+    name: kdump
+    enabled: false
+    state: stopped
+  when: manage_rhel8_v_230310
+
+- name: packages playbook - Ensure coredump is disabled - V-230312
+  service:
+    name: systemd-coredump.socket
+    enabled: false
+    force: true
+    masked: true
+    state: stopped
+  when: manage_rhel8_v_230312
+
+- name: packages playbook - Ensure ctrl+alt+delete target is masked - V-230529
+  service:
+    name: ctrl-alt-del.target
+    force: true
+    masked: true
+    state: stopped
+  when: manage_rhel8_v_230529
+
+- name: packages playbook - Disable service deebug-shell - V-230532
+  service:
+    name: debug-shell.service
+    enabled: false
+    state: stopped
+    masked: true
+  when: manage_rhel8_v_230532
+
+- name: packages playbook - Install mailx package - V-256974
+  package:
+    name: mailx
+    state: present
+  when: manage_rhel8_v_256974
+
+- name: packages playbook - Ensure xorg packages are removed - V-230553
+  package:
+    name:
+    - xorg-x11-server-Xorg
+    - xorg-x11-server-common
+    - xorg-x11-server-utils
+    - xorg-x11-server-Xwayland
+    state: absent
+  when: manage_rhel8_v_230533

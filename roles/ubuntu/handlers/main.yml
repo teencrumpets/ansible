@@ -1,0 +1,50 @@
+- name: Restart AuditD
+  service:
+    name: auditd
+    state: restarted
+
+- name: Update Grub
+  command: update-grub
+
+- name: Restart Rsyslog
+  service:
+    name: rsyslog
+    state: restarted
+
+- name: Update certificate trust store
+  command: "{{ update_cmd }}"
+
+- name: Reload augenrules
+  command: augenrules --load
+  register: augenrules_load_result
+  failed_when: augenrules_load_result.rc != 0 and "No change" not in augenrules_load_result.stdout
+
+- name: Restart Chrony
+  service:
+    name: chrony
+    state: restarted
+
+- name: Reload audit daemon
+  command: systemctl kill auditd -s SIGHUP
+
+- name: /var/log/audit owner
+  file:
+    path: /var/log/audit
+    mode: 0750
+
+- name: /var/log permissions
+  file:
+    path: /var/log
+    mode: 0755
+
+- name: Reload System Config Files
+  command: sysctl --system
+
+- name: Restart SSHD
+  service:
+    name: ssh
+    enabled: true
+    state: restarted
+
+- name: Reload journal
+  command: systemd-tmpfiles --create /usr/lib/tmpfiles.d/systemd.conf

@@ -1,0 +1,472 @@
+- import_role:
+    name: 'ubuntu'
+  when: run_ubuntu
+
+- name: Change login.def to allow tomcat to start
+  lineinfile:
+    path: '/etc/login.defs'
+    line: 'UMASK 022'
+    state: present
+    regexp: "^(?i)UMASK"
+  changed_when: false
+
+- name: Verify login.defs
+  replace:
+    path: "/etc/login.defs"
+    regexp: '^(?i)UMASK'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  ignore_errors: true
+  changed_when: false
+
+- name: Install OpenJDK 11 JDK package
+  package:
+    name: openjdk-11-jdk
+    state: present
+
+- name: Ensure group "tomcat" exists
+  group:
+    name: tomcat
+    state: present
+    system: true
+
+- name: Add the user 'tomcat'
+  user:
+    system: true
+    name: 'tomcat'
+    home: '/opt/tomcat'
+    group: 'tomcat' 
+    shell: '/usr/sbin/nologin'
+
+
+- name: get current tomcat version
+  shell: >
+    curl https://tomcat.apache.org/download-90.cgi |
+    grep -i '</div><h3 id="9.' | grep -o 9\.[0-9]*\.[0-9]* | head -n1
+  register: tomcat_version
+  changed_when: false
+
+- name: get current tomcat download
+  shell: >
+    curl https://tomcat.apache.org/download-90.cgi |
+    grep -io https\:\/\/dlcdn\.apache\.org/tomcat/tomcat\-9\/v9\.[0-9]*\.[0-9]*/bin/apache-tomcat-9\.[0-9]*\.[0-9]*\.tar\.gz  
+    | head -n1
+  register: tomcat_download
+  changed_when: false
+
+- name: Download tomcat gzip
+  get_url:
+    dest: '/tmp'
+    mode: '700'
+    url:
+      '{{tomcat_download.stdout}}'
+
+- name: Remove old ssc.war if new tomcat upgrade because it needs to be redeployed
+  file:
+    path: "/opt/tomcat/version/webapps/ssc.war"
+    state: absent
+
+- name: Extract the tomcat tar
+  unarchive:
+    remote_src: true
+    src: '/tmp/apache-tomcat-{{tomcat_version.stdout}}.tar.gz'
+    dest: '/opt/tomcat'
+    owner: 'tomcat'
+    group: 'tomcat'
+
+- name: find folders in tomcat directory
+  find:
+    path: "/opt/tomcat/apache-tomcat-{{tomcat_version.stdout}}"
+  register: default_folder_found
+
+- name: rename folder name to hide version number
+  shell: 'mv /opt/tomcat/apache-tomcat-{{tomcat_version.stdout}} {{catalina_home_base}}'
+  when: default_folder_found.files |length != 0
+  register: output 
+  failed_when: 
+  - '"File exists" not in output.stdout'
+  - 'output.stdout |length != 0'
+
+- name: Delete leftover tomcat version file if not removed from above task
+  file:
+    path: '/opt/tomcat/apache-tomcat-{{tomcat_version.stdout}}'
+    state: absent
+
+- name: Copy tomcat.service file with owner and permissions
+  copy:
+    src: 'tomcat.service'
+    dest: '/etc/systemd/system/'
+    owner: 'tomcat'
+    group: 'tomcat'
+    mode: '700'
+
+- name: allow service through firewall
+  ufw:
+    rule: allow
+    proto: tcp
+    to_port: '8080'
+
+- name: Create fortify mount directory
+  file:
+    state: directory
+    path: /mnt/fortify_ssc
+    owner: ypgansible
+    group: ypgansible
+    mode: 0770
+
+- name: Mounting nfs share
+  mount:
+    src: "{{nfs_share}}"
+    path: /mnt/fortify_ssc
+    state: mounted
+    fstype: nfs
+  changed_when: false
+
+- name: Copy file with owner and permissions
+  copy:
+    src: /mnt/fortify_ssc/fortify_ssc/ssc.war
+    dest: /opt/tomcat/version/webapps/ssc.war
+    owner: tomcat
+    group: tomcat
+    mode: 0700
+    remote_src: true
+
+- name: Cleaning up mounts
+  mount:
+    src: "{{nfs_share}}"
+    path: /mnt/fortify_ssc
+    state: absent
+    fstype: nfs
+  changed_when: false
+
+#Stig settings for fortify
+
+- name: Remove manager, docs, examples -V-222958, V-222959, V-222960, V-222962, V-222970, V-222976, V-223006			
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+     - "{{catalina_home_base}}/webapps/manager"
+     - "{{catalina_home_base}}/webapps/examples"
+     - "{{catalina_home_base}}/webapps/docs"
+     - "{{catalina_home_base}}/webapps/ROOT"
+     - "{{catalina_home_base}}/webapps/host-manager"
+
+- name: set session timeout number - V-222979
+  lineinfile:
+    path: "{{catalina_home_base}}/conf/web.xml"
+    line: '<session-timeout>10</session-timeout>'
+    state: present
+    regexp: '<session-timeout>.*</session-timeout>' 
+
+- name: Verify session timeout
+  replace:
+    path: "{{catalina_home_base}}/conf/web.xml"
+    regexp: '(?i)<session-timeout>10</session-timeout>'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  ignore_errors: true
+  changed_when: false
+
+- name: set LockOutRealms - V-222980, V-222981, V-222982
+  lineinfile:
+    path: "{{catalina_home_base}}/conf/server.xml"
+    line: '<Realm className="org.apache.catalina.realm.LockOutRealm" failureCount="5" lockOutTime="600">'
+    state: present
+    regexp: '<Realm className="org.apache.catalina.realm.LockOutRealm"'
+
+- name: Verify LockOutRealms
+  replace:
+    path: "{{catalina_home_base}}/conf/server.xml"
+    regexp: '(?i)<Realm className="org.apache.catalina.realm.LockOutRealm"'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  ignore_errors: true
+  changed_when: false
+
+- name: find files in conf folder
+  find:
+    path: "{{catalina_home_base}}/conf/"
+    recurse: yes
+  register: find_result
+
+- name: change permission of files in conf folder - V-222945
+  file:
+    path: "{{ item.path }}"
+    mode: "0640"
+  with_items: "{{ find_result.files}}"
+
+- name: change tomcat home user and group - V-222986	
+  file:
+    path: '{{catalina_home_base}}/'
+    owner: 'root'
+    group: 'tomcat' 
+    state: directory
+
+- name: conf folder permissions - V-222946, V-222987
+  file:
+    path: "{{catalina_home_base}}/conf"
+    mode: '0750'
+    owner: 'root'
+    group: 'tomcat'
+    state: directory
+
+- name: disable shutdown port - V-222951
+  lineinfile:
+    path: "{{catalina_home_base}}/conf/server.xml"
+    line: '<Server port="-1" shutdown="SHUTDOWN">'
+    state: present
+    regexp: '<Server port=".*" shutdown=".*">'
+
+- name: Verify shutdown port
+  replace:
+    path: "{{catalina_home_base}}/conf/server.xml"
+    regexp: '(?i)<Server port=".*" shutdown=".*">'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  ignore_errors: true
+  changed_when: false
+
+- name: set auto deploy to false - V-222956	 
+  lineinfile:
+    path: "{{catalina_home_base}}/conf/server.xml"
+    line: '      unpackWARs="true" autoDeploy="false">'
+    state: present
+    regexp: 'unpackWARs=".*" autoDeploy=".*">'
+
+- name: Verify auto deploy
+  replace:
+    path: "{{catalina_home_base}}/conf/server.xml"
+    regexp: '(?i)unpackWARs=".*" autoDeploy=".*">'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  ignore_errors: true
+  changed_when: false
+
+- name: secure cookies - V-222932,	V-222933
+  blockinfile:
+    path: "{{catalina_home_base}}/conf/web.xml"
+    marker: "<!-- {mark} ANSIBLE MANAGED BLOCK 1 -->"
+    insertbefore: "</session-config>"
+    block: |
+      <cookie-config>
+       <http-only>true</http-only>
+        <secure>true</secure>
+      </cookie-config>
+  
+- name: set defaultservlet to read only - V-222934
+  blockinfile:
+    path: "{{catalina_home_base}}/conf/web.xml"
+    marker: "<!-- {mark} ANSIBLE MANAGED BLOCK 2 -->"
+    insertafter: "<servlet-class>org.apache.catalina.servlets.DefaultServlet</servlet-class>"
+    block: |
+      <init-param>
+        <param-name>readonly</param-name>
+        <param-value>true</param-value>
+      </init-param>
+
+- name: set ErrorReportValve -V-222975, V-222977
+  blockinfile:
+    path: "{{catalina_home_base}}/conf/server.xml"
+    marker: "<!-- {mark} ANSIBLE MANAGED BLOCK 3 -->"
+    insertbefore: "</Host>"
+    block: |
+      <Valve className="org.apache.catalina.valves.ErrorReportValve" 
+      showServerInfo="false"
+      showReport="false" />
+
+- name: HTTP Strict Transport Security (HSTS) must be enabled.  - V-222928	
+  blockinfile:
+    path: "{{catalina_home_base}}/conf/web.xml"
+    marker: "<!-- {mark} ANSIBLE MANAGED BLOCK 4 -->"
+    insertafter: "sniffing be added to every response?"
+    block: |
+      <filter>
+        <filter-name>httpHeaderSecurity</filter-name>
+        <filter-class>org.apache.catalina.filters.HttpHeaderSecurityFilter</filter-class>
+        <async-supported>true</async-supported>
+        <init-param>
+          <param-name>hstsEnabled</param-name>
+          <param-value>true</param-value>
+        </init-param>
+      </filter>
+
+- name: HttpHeadersecurityfilter filter mapping. - V-222928	 
+  blockinfile:
+    path: "{{catalina_home_base}}/conf/web.xml"
+    marker: "<!-- {mark} ANSIBLE MANAGED BLOCK 5 -->"
+    insertafter: "The mapping for the HTTP header security Filter"
+    block: |
+      <filter-mapping>
+        <filter-name>httpHeaderSecurity</filter-name>
+        <url-pattern>/*</url-pattern>
+        <dispatcher>REQUEST</dispatcher>
+      </filter-mapping>
+
+- name: set remote ip valve - V-222937
+  lineinfile:
+    path: "{{catalina_home_base}}/conf/server.xml"
+    regexp: '(?i)<Valve className="org.apache.catalina.valves.RemoteIpValve" internalProxies='
+    line: '      <Valve className="org.apache.catalina.valves.RemoteIpValve" internalProxies="{{internal_Proxy}}"/>'
+    state: present
+    insertbefore: 'BEGIN ANSIBLE MANAGED BLOCK 3'
+
+- name: Verify remote ip valve
+  replace:
+    path: "{{catalina_home_base}}/conf/server.xml"
+    regexp: '(?i)<Valve className="org.apache.catalina.valves.RemoteIpValve" internalProxies='
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  ignore_errors: true
+  changed_when: false
+
+- name: set request Attributes Enabled="true" - V-222937
+  lineinfile:
+    path: "{{catalina_home_base}}/conf/server.xml"
+    line: '               requestAttributesEnabled="true"'
+    regexp: '(?i)requestAttributesEnabled='
+    state: present
+    insertafter: '<Valve className="org.apache.catalina.valves.AccessLogValve" directory="logs"'
+
+- name: Verify attributes enabled=true
+  replace:
+    path: "{{catalina_home_base}}/conf/server.xml"
+    regexp: '(?i)requestAttributesEnabled='
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  ignore_errors: true
+  changed_when: false
+
+- name: set ip for connector - V-223009	 
+  lineinfile:
+    path: "{{catalina_home_base}}/conf/server.xml"
+    line: '               address="{{ip_Address}}"'
+    regexp: '(?i)address='
+    state: present
+    insertafter: 'Connector port="8080" protocol="HTTP/1.1"'
+
+- name: Verify ip connector
+  replace:
+    path: "{{catalina_home_base}}/conf/server.xml"
+    regexp: '(?i)address='
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  ignore_errors: true
+  changed_when: false
+
+- name: unpack the catalina jar
+  command: jar -xf catalina.jar org/apache/catalina/util/ServerInfo.properties
+  args:
+    chdir: '{{catalina_home_base}}/lib'
+  changed_when: false
+
+- name: change server.info
+  lineinfile:
+    path: "{{catalina_home_base}}/lib/org/apache/catalina/util/ServerInfo.properties"
+    line: 'server.info=239hgj'
+    state: present
+    regexp: '(?i)server\.info='
+
+- name: Verify server.info
+  replace:
+    path: "{{catalina_home_base}}/lib/org/apache/catalina/util/ServerInfo.properties"
+    regexp: '(?i)server\.info='
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  ignore_errors: true
+  changed_when: false
+
+- name: change server.number
+  lineinfile:
+    path: "{{catalina_home_base}}/lib/org/apache/catalina/util/ServerInfo.properties"
+    line: 'server.number=0.26666222.3'
+    state: present
+    regexp: '(?i)server\.number='
+  register: server_number
+
+- name: Verify server.number
+  replace:
+    path: "{{catalina_home_base}}/lib/org/apache/catalina/util/ServerInfo.properties"
+    regexp: '(?i)server\.number='
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  ignore_errors: true
+  changed_when: false
+
+- name: update the catalina jar
+  command: jar -uf catalina.jar org/apache/catalina/util/ServerInfo.properties
+  args:
+    chdir: '{{catalina_home_base}}/lib'
+  changed_when: false
+  
+- name: set audit on tomcat bin, conf and lib directory -V-222998, V-222999	, V-223000 
+  lineinfile: 
+    insertafter: EOF
+    line: "{{ item.line }}"
+    state: present
+    path: "/etc/audit/rules.d/stig.rules"
+  with_items:
+    - {line: "-w {{catalina_home_base}}/bin -p wa -k tomcat", regexp: "(?!)bin -p wa -k tomcat"}
+    - {line: "-w {{catalina_home_base}}/conf -p wa -k tomcat", regexp: "(?i)conf -p wa -k tomcat"}
+    - {line: "-w {{catalina_home_base}}/lib -p wa -k tomcat", regexp: "(?i)lib -p wa -k tomcat"}
+
+- name: Verify audit
+  replace:
+    path: "/etc/audit/rules.d/stig.rules"
+    regexp: "(?i){{ item.line }}"
+    replace: ''
+  check_mode: yes
+  with_items:
+    - {line: "-w {{catalina_home_base}}/bin -p wa -k tomcat", regexp: "(?!)bin -p wa -k tomcat"}
+    - {line: "-w {{catalina_home_base}}/conf -p wa -k tomcat", regexp: "(?i)conf -p wa -k tomcat"}
+    - {line: "-w {{catalina_home_base}}/lib -p wa -k tomcat", regexp: "(?i)lib -p wa -k tomcat"}
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  ignore_errors: true
+  changed_when: false
+
+- name: restart tomcat in case changes were made
+  service:
+    state: restarted
+    enabled: true
+    name: 'tomcat'
+    daemon_reload: true
+
+- name: Change login.defs back to original
+  lineinfile:
+    path: '/etc/login.defs'
+    line: "UMASK {{UMASK}}"
+    state: present
+    regexp: '^(?i)UMASK'
+  changed_when: false
+
+- name: Verify login.defs at end
+  replace:
+    path: "/etc/login.defs"
+    regexp: "^(?i)UMASK"
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  ignore_errors: true
+  changed_when: false

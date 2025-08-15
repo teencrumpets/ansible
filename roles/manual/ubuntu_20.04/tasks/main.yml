@@ -1,0 +1,111 @@
+- name: main playbook - Stop Trellix
+  service:
+    name: "{{ item.name }}"
+    state: stopped
+  with_items:
+    - { name: mfeespd}
+    - { name: mfetpd}
+  ignore_errors: true
+ 
+- name: Check if server has valid hostname
+  set_fact:
+    valid_name: false
+    old_name: "{{ansible_hostname}}"
+  when: hostname != ansible_hostname and verify_hostname
+
+- name: Find and remove wrong hostname and set correct one to 127.0.1.1
+  replace:
+    path: /etc/hosts
+    regexp: '^127.*{{ old_name }}.*$'
+    replace: "127.0.1.1 {{ hostname }}"
+  when: not valid_name and verify_hostname
+  
+- name: Add correct host if missing
+  lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.1\.1\s+'
+    line: "127.0.1.1 {{ hostname }}"
+  when: verify_hostname
+  
+- name: Set hostname
+  hostname: 
+    name: "{{ hostname }}"
+
+- name: Packages STIG settings
+  import_tasks: Packages.yml
+  tags:
+    - packages
+
+- name: AIDE STIG settings
+  import_tasks: AIDE.yml
+  tags:
+    - aide
+  
+- name: Audit Rules STIG settings
+  import_tasks: Audit_Rules.yml
+  tags:
+    - audit_rules
+  
+- name: Grub STIG settings
+  import_tasks: Grub.yml
+  tags:
+    - grub
+
+- name: Logging STIG settings
+  import_tasks: Logging.yml
+  tags:
+    - logging
+  
+- name: Miscellaneous STIG settings
+  import_tasks: Misc.yml
+  tags:
+    - misc
+
+- name: PAM STIG settings
+  import_tasks: PAM.yml
+  tags:
+    - pam
+  
+- name: Security STIG settings
+  import_tasks: Security.yml
+  tags:
+    - security
+  
+- name: Auditd STIG settings
+  import_tasks: AuditD.yml
+  tags:
+    - auditd
+  
+- name: Devices STIG settings
+  import_tasks: Devices.yml
+  tags:
+    - devices
+  
+- name: Firewall configuration
+  import_tasks: UFW.yml
+  tags:
+    - firewall
+  
+- name: Login STIG settings
+  import_tasks: Login.yml
+  tags:
+    - login
+  
+- name: SSHD STIG settings
+  import_tasks: SSHD.yml
+  tags:
+    - sshd
+
+- name: Filesystem STIG settings
+  import_tasks: Filesystem.yml
+  tags:
+    - filesystem
+
+# - name: main playbook - Start Trellix
+#   service:
+#     name: "{{ item.name }}"
+#     state: started
+#   with_items:
+#     - { name: mfeespd}
+#     - { name: mfetpd}
+#   ignore_errors: true

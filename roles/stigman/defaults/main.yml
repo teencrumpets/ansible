@@ -1,0 +1,20 @@
+volume_backups: 5
+stigman_subnet: 192.168.2.64/26
+backup_mount_dir_stigman: '{{ backup_mount_dir }}/stigman'
+nec_svr_ops_dir_stigman: '{{ nec_svr_ops_dir }}/stigman'
+compose_path: '/opt/compose/stigman'
+
+# Stigman backup & restore
+stigman_mysql_backup_dir: '{{ backup_mount_dir_stigman }}/docker_volumes/stigman/{{ ENV }}/mysql/'
+stigman_mysql_restore_dir: '{{ backup_mount_dir_stigman }}/docker_volumes/stigman/prod/mysql/'
+stigman_keycloak_backup_dir: '{{ backup_mount_dir_stigman }}/docker_volumes/stigman/{{ ENV }}/keycloak/'
+stigman_keycloak_restore_dir: '{{ backup_mount_dir_stigman }}/docker_volumes/stigman/prod/keycloak/'
+
+harbor_url_for_nginx: 'registry.web.yuma.army.mil/library/nginx'
+nginx_version_tag: '1.28.0_ypg_2025-06-16_16-14-10'
+harbor_url_for_keycloak: 'registry.web.yuma.army.mil/library/keycloak'
+keycloak_version_tag: '19.0.2_ypg_2025-06-16_14-31-19'
+harbor_url_for_stigman: 'registry.web.yuma.army.mil/library/stig-manager'
+stigman_version_tag: '1.5.3_ypg_2025-06-16_14-34-08'
+harbor_url_for_mysql: 'registry.web.yuma.army.mil/library/mysql'
+mysql_version_tag: '8.0.42_ypg_2025-06-16_14-29-35'

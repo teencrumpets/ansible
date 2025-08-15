@@ -1,0 +1,89 @@
+- import_role:
+    name: 'docker_host'
+  when: run_docker
+
+- name: Create Jira compose directory
+  file:
+    state: directory
+    path: "{{compose_path}}"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Create nfs mount directory for binary data
+  file:
+    state: directory
+    path: '{{ nec_svr_ops_dir_jira }}'
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Create backup mount directory
+  file:
+    state: directory
+    path: '{{ backup_mount_dir_jira }}'
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Deploy Jira
+  import_tasks: deploy.yml
+  when: mode in ["restore", "deploy"]
+
+- import_role:
+    name: 'container_health'
+  when: mode in ["backup", "update"]
+
+- name: Backup Jira
+  import_tasks: backup.yml
+  when: mode in ["backup", "update"]
+
+- name: Create compose file
+  template:
+    src: compose.yaml.j2
+    dest: "{{compose_path}}/compose.yaml"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+  when: mode in ["update"]
+
+- name: Update Jira image
+  command:
+    cmd: 'docker compose pull'
+    chdir: "{{compose_path}}"
+  changed_when: false
+  when: mode in ["update"]
+
+- name: Stopping Jira service
+  command:
+    cmd: "docker compose down"
+    chdir: "{{compose_path}}"
+  changed_when: false
+  when: mode in ["bounce"]
+
+- name: Start Jira service
+  command:
+    cmd: 'docker compose up -d'
+    chdir: "{{compose_path}}"
+  changed_when: false
+  when: mode in ["backup", "deploy", "update", "restore", "bounce"]
+
+- import_role:
+    name: 'container_health'
+  when: mode != "deploy"
+
+- name: Cleaning up nfs_share mount
+  mount:
+    src: "{{ nfs_share }}"
+    path: "{{nec_svr_ops_dir_jira}}"
+    state: absent
+    fstype: nfs
+  changed_when: false
+
+- name: Cleaning up backup mount
+  mount:
+    src: "{{ backup_share }}"
+    path: "{{backup_mount_dir_jira}}"
+    state: absent
+    fstype: nfs
+  changed_when: false

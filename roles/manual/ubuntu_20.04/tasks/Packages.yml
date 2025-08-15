@@ -1,0 +1,191 @@
+# Site settings
+- name: Packages - Configure apt to use IPv4 only
+  lineinfile:
+    path: /etc/apt/apt.conf.d/98-force-ipv4
+    line: 'Acquire::ForceIPv4 "true";' 
+    regexp: '(?i)ForceIPv4'
+    create: true
+
+- name: Packages - Verify apt IPv4 config
+  replace:
+    path: /etc/apt/apt.conf.d/98-force-ipv4
+    regexp: '(?i)ForceIPv4'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+
+- name: Packages - Add Microsoft repo to apt sources
+  shell: 'echo "deb [arch=amd64,arm64,armhf trusted=yes] https://packages.microsoft.com/ubuntu/20.04/prod focal main" | sudo tee /etc/apt/sources.list.d/microsoft-prod.list'
+  args:
+    chdir: /etc/apt/sources.list.d
+    creates: /etc/apt/sources.list.d/microsoft-prod.list
+
+- name: Packages - Update apt
+  apt:
+    update_cache: yes
+  failed_when: false
+  changed_when: false
+
+- name: Packages - Ensure powershell is installed
+  package:
+    name: powershell
+    state: present
+
+- name: Packages - Ensure nfs-common is installed 
+  package: 
+    name: nfs-common
+    state: present 
+
+- name: Packages - unattended-upgrades not installed
+  package: 
+    name: unattended-upgrades
+    state: absent
+
+- name: Packages - postfix not installed
+  package: 
+    name: postfix
+    state: absent
+
+- name: Packages - Ensure unattended-upgrades service inactive
+  service:
+    name: unattended-upgrades
+    enabled: false
+    state: stopped
+  ignore_errors: yes
+
+- name: Packages - Removing configuration for unattended-upgrades
+  file:
+    path: /etc/apt/apt.conf.d/20auto-upgrades
+    state: absent
+
+- name: Packages - Ensure chrony is installed 
+  package: 
+    name: chrony
+    state: present
+
+- name: Packages - Ensure vlock is installed - V-238200
+  package: 
+    name: vlock
+    state: present 
+  when: manage_ubuntu_V_238200
+
+- name: Packages - Ensure openssh is installed - V-238215
+  package: 
+    name: ssh
+    state: present 
+  when: manage_ubuntu_V_238215
+
+- name: Packages - Ensure openssh is enabled and running - V-238215
+  service:
+    name: sshd
+    enabled: true
+    state: started
+  when: manage_ubuntu_V_238215
+
+- name: Packages - Ensure telnet is not installed - V-238326
+  package: 
+    name: telnetd
+    state: absent 
+  when: manage_ubuntu_V_238326
+
+- name: Packages - Ensure rsh-server is not installed - V-238327
+  package: 
+    name: rsh-server
+    state: absent 
+  when: manage_ubuntu_V_238327
+
+- name: Packages - Check status of kdump-tools - V-238334
+  command: systemctl is-active kdump-tools.service
+  register: kdump_status
+  failed_when: kdump_status.rc != 3 and kdump_status.rc != 0
+  changed_when: false 
+  when: manage_ubuntu_V_238334
+
+- name: Packages - Ensure kdump-tools is inactive - V-238334
+  service:
+    name: kdump-tools
+    enabled: false
+    state: stopped
+  when: ("{{kdump_status.stdout}}" == 'active') and (manage_ubuntu_V_238334)
+
+- name: Packages - Ensure ufw is installed - V-238354
+  package: 
+    name: ufw
+    state: present 
+  when: manage_ubuntu_V_238354
+
+- name: Packages - Ensure ufw is enabled and running - V-238354
+  service:
+    name: ufw
+    enabled: true
+    state: started
+  when: manage_ubuntu_V_238354
+
+- name: Packages - Get list of files - V-270695
+  find:
+    paths: /etc/apt/apt.conf.d
+    recurse: yes
+    file_type: file
+  register: apt_config_files
+  when: manage_ubuntu_V_270695
+
+- name: Packages - Ensure AllowUnauthenticated is disabled - V-270695
+  lineinfile: 
+    state: absent
+    path: '{{ item.path }}'
+    regexp: 'AllowUnauthenticated "true"'
+  loop: '{{ apt_config_files.files }}' 
+  when: manage_ubuntu_V_270695
+
+- name: Packages - Ensure that snapd package is installed - V-238360
+  package:
+    name: snapd
+    state: present
+  when: manage_ubuntu_V_238360
+
+- name: Packages - Ensure snapd is enabled and running - V-238360
+  service:
+    name: snapd
+    enabled: true
+    state: started
+  when: manage_ubuntu_V_238360
+
+- name: Packages - Ensure apparmor is installed - V-238360
+  package: 
+    name: apparmor
+    state: present 
+  when: manage_ubuntu_V_238360
+
+- name: Packages - Ensure apparmor is enabled and running - V-238360
+  service:
+    name: apparmor
+    enabled: true
+    state: started
+  when: manage_ubuntu_V_238360
+
+- name: Packages - Configuring /etc/apt/apt.conf.d/50unattended-upgrades - V-238370
+  lineinfile:
+    path: '/etc/apt/apt.conf.d/50unattended-upgrades'
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - {line: 'Unattended-Upgrade::Remove-Unused-Dependencies "true";', regexp: '(?i)^Unattended-Upgrade::Remove-Unused-Dependencies'}
+    - {line: 'Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";', regexp: '(?i)^Unattended-Upgrade::Remove-Unused-Kernel-Packages'}
+  when: manage_ubuntu_V_238370
+
+- name: Packages - Verify /etc/apt/apt.conf.d/50unattended-upgrades - V-238370
+  replace:
+    path: /etc/apt/apt.conf.d/50unattended-upgrades
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '(?i)^Unattended-Upgrade::Remove-Unused-Dependencies'}
+    - { regexp: '(?i)^Unattended-Upgrade::Remove-Unused-Kernel-Packages'}
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_238370

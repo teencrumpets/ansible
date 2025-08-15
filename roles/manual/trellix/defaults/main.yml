@@ -1,0 +1,6 @@
+docker_exception: false
+manage_mcafeeaudit_offloading: true
+rsyslog_server_ip: '6.2.4.36'
+rsyslog_linux_port: '10614'
+trellix_mount: '{{ nec_svr_ops_dir }}/trellix'
+trellix_agent_dir: '{{ trellix_mount }}/trellix-agent'

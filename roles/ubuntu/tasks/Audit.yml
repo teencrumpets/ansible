@@ -1,0 +1,212 @@
+- name: Audit - Configure audispd - V-270658
+  lineinfile:
+    path: "{{ item.path }}"
+    line: "{{ item.line }}"
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { path: '/etc/audit/plugins.d/au-remote.conf', line: 'active = yes', regexp: '(?i)^active' }
+    - { path: '/etc/audit/audisp-remote.conf', line: 'remote_server = {{ syslog_ip }}', regexp: '(?i)^remote_server' }
+    - { path: '/etc/audit/audisp-remote.conf', line: 'port = {{ syslog_port }}', regexp: '(?i)^port' }
+  notify: Restart AuditD
+  when: manage_ubuntu_V_270658
+
+- name: Audit - Verify audispd configuration - V-270658
+  replace:
+    path: '{{ item.path }}'
+    regexp: '{{ item.regexp }}'
+    replace: ''
+  with_items:
+    - { path: '/etc/audit/plugins.d/au-remote.conf', regexp: '(?i)^active' }
+    - { path: '/etc/audit/audisp-remote.conf', regexp: '(?i)^remote_server' }
+    - { path: '/etc/audit/audisp-remote.conf', regexp: '(?i)^port' }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_270658
+
+- name: Audit - Configure system clock - V-270751
+  lineinfile:
+    path: /etc/chrony/chrony.conf
+    line: 'server {{ time_server_ip }} iburst maxpoll 16'
+    insertbefore: '(?i)This directive specify the location of the file containing ID\/key pairs for'
+  notify: Restart Chrony
+  when: manage_ubuntu_V_270751
+
+- name: Audit - Format time server IP - V-270751
+  set_fact:
+    formatted_ip: "{{ time_server_ip | regex_replace('\\.', '\\.') }}"
+  when: manage_ubuntu_V_270751
+
+- name: Audit - Verify /etc/chrony/chrony.conf - V-270751
+  replace:
+    path: /etc/chrony/chrony.conf
+    regexp: '(?i)^server\s+{{formatted_ip}}\s+iburst\s+maxpoll\s+16'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_270751
+
+- name: Audit - Setup chrony to sync with internal system clock - V-270752
+  lineinfile:
+    path: /etc/chrony/chrony.conf
+    line: 'makestep 1 -1'
+    regexp: '(?i)^makestep'
+  notify: Restart Chrony
+  when: manage_ubuntu_V_270752
+
+- name: Audit - Verify internal system clock sync configuration - V-270752
+  replace:
+    path: /etc/chrony/chrony.conf
+    regexp: '(?i)^makestep'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_270752
+
+- name: Audit - Configure so that audit config files are not write accessible by unauthorized users - V-270775
+  file:
+    path: '{{ item.path }}'
+    mode: '0640'
+    owner: root
+    group: root
+  with_items:
+    - { path: '/etc/audit/auditd.conf' }
+    - { path: '/etc/audit/audit.rules' }
+  when: manage_ubuntu_V_270775
+
+- name: Audit - Configure so that audit config files are not write accessible by unauthorized users - V-270775
+  file:
+    path: /etc/audit/rules.d/
+    mode: '0640'
+    owner: root
+    group: root
+    recurse: yes
+  when: manage_ubuntu_V_270775
+
+- name: Audit - Configure space left notification - V-270818, V-270819
+  lineinfile:
+    path: /etc/audit/auditd.conf
+    line: '{{ item.line }}'
+    regexp: '{{ item.regexp }}'
+  with_items:
+    - { line: 'space_left_action = email', regexp: '(?i)^space_left_action\s+', managed: '{{ manage_ubuntu_V_270818 }}' }
+    - { line: 'space_left = 25%', regexp: '(?i)^space_left\s+', managed: '{{ manage_ubuntu_V_270818 }}' }
+    - { line: 'action_mail_acct = YPG-NEC-ServerTeam-Operations@army.mil', regexp: '(?i)^action_mail_acct', managed: '{{ manage_ubuntu_V_270819 }}' }
+  when: item.managed
+  notify: Restart AuditD
+
+- name: Audit - Verify space left nofitication configuration - V-270818, V-270819
+  replace:
+    path: /etc/audit/auditd.conf
+    replace: ''
+    regexp: '{{ item.regexp }}'
+  with_items:
+    - { regexp: '(?i)^space_left_action', managed: '{{ manage_ubuntu_V_270818 }}' }
+    - { regexp: '(?i)^space_left\s+', managed: '{{ manage_ubuntu_V_270818 }}' }
+    - { regexp: '(?i)^action_mail_acct\s+', managed: '{{ manage_ubuntu_V_270819 }}' }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed
+
+- name: Audit - Check timezone - V-270820
+  shell: timedatectl status | grep -i "time zone" | awk '{print $3}'
+  register: timezone
+  changed_when: false
+  when: manage_ubuntu_V_270820
+
+- name: Audit - Set timezone - V-270820
+  command: timedatectl set-timezone UTC
+  when: (manage_ubuntu_V_270820) and (timezone.stdout != "UTC")
+
+- name: Audit - Set audit tool directory permissions - V-270821, V-270822, V-270823
+  file:
+    path: "{{ item.path }}"
+    mode: 0755
+    owner: root
+    group: root
+  with_items:
+    - { path: '/sbin/auditctl' }
+    - { path: '/sbin/aureport' }
+    - { path: '/sbin/ausearch' }
+    - { path: '/sbin/autrace' }
+    - { path: '/sbin/auditd' }
+    - { path: '/sbin/augenrules' }
+  when: (manage_ubuntu_V_270821) and (manage_ubuntu_V_270822) and (manage_ubuntu_V_270823)
+
+- name: Audit - Set system command directory permissions - V-270824, V-270825, V-270826
+  file:
+    path: "{{ item.path }}"
+    mode: 0755
+    owner: root
+    group: root
+  with_items:
+    - { path: '/bin' }
+    - { path: '/sbin' }
+    - { path: '/usr/bin' }
+    - { path: '/usr/sbin' }
+    - { path: '/usr/local/bin' }
+    - { path: '/usr/local/sbin' }
+  when: (manage_ubuntu_V_270824) and (manage_ubuntu_V_270824) and (manage_ubuntu_V_270826)
+
+- name: Audit - Get list of /var/log/audit files
+  find:
+    path: /var/log/audit
+    recurse: yes
+    file_type: file
+  register: log_files
+
+- name: Audit - Set audit log file permissions - V-270827, V-270828, V-270829, V-270830
+  file:
+    mode: u-x,g-rwx,o-rwx
+    owner: root
+    group: root
+    path: '{{ item.path }}'
+  loop: '{{ log_files.files }}'
+  when: (manage_ubuntu_V_270827) and (manage_ubuntu_V_270828) and (manage_ubuntu_V_270829) and (manage_ubuntu_V_270830)
+
+- name: Audit - Set default configuration for group owner in auditd.conf - V-270829
+  lineinfile:
+    path: /etc/audit/auditd.conf
+    line: 'log_group = root'
+    regexp: 'log_group\s+'
+  when: manage_ubuntu_V_270829
+  notify:
+    - Reload audit daemon 
+    - /var/log/audit owner
+
+- name: Audit - Verify default auditd.conf group owner configuration - V-270829, V-270830
+  replace:
+    path: /etc/audit/auditd.conf
+    regexp: 'log_group\s+'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: (manage_ubuntu_V_270829) and (manage_ubuntu_V_270830)
+
+- name: Audit - Configure auditing rules as immutable - V-270832
+  lineinfile:
+    path: /etc/audit/rules.d/audit.rules
+    line: '-e 2'
+    regexp: '(?i)^-e\s2'
+    insertafter: eof
+  when: manage_ubuntu_V_270832
+
+- name: Audit - Verify immutable auditing rules configuration - V-270832
+  replace:
+    path: /etc/audit/rules.d/audit.rules
+    replace: ''
+    regexp: '(?i)^-e\s2'
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_270832

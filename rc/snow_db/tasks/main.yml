@@ -1,0 +1,78 @@
+- import_role:
+    name: 'rhel8'
+  when: run_rhel == 'true'
+
+- name: Update package lists
+  dnf:
+    update_cache: yes
+  when: mode in ["deploy"]  
+
+- name: Install required packages
+  package:
+    name: "{{ item.name }}"
+    state: present 
+  with_items:
+    - { name: ncurses-compat-libs }
+    - { name: rsync }
+    - { name: unzip }
+    - { name: wget }
+    - { name: perl }
+    - { name: nfs-utils }
+  when: mode in ["deploy"]
+
+- name: Set SELinux to permissive mode 
+  selinux:
+    state: permissive
+    policy: targeted
+
+- name: Configure rhel 8 to log out idle session - V-257258 set this to no time out so backup completes
+  lineinfile:
+    path: /etc/systemd/logind.conf
+    regexp: ^(?i)StopIdleSessionSec=
+    line: StopIdleSessionSec=0
+    state: present
+  register: idle_session
+
+- name: Restart systemd-logind
+  command: systemctl restart systemd-logind
+  when: idle_session.changed
+
+- name: Backup SNOW MariaDB
+  import_tasks: backup.yml
+  when: mode in ["backup"]
+
+- name: Deploy SNOW MariaDB
+  import_tasks: deploy.yml
+  when: mode in ["deploy", "restore"]
+
+- name: Restore SNOW MariaDB
+  import_tasks: restore.yml
+  when: mode in ["restore"]
+
+- name: security playbook - Configure rhel 8 to log out idle session - V-257258 set it back to STIG 
+  lineinfile:
+    path: /etc/systemd/logind.conf
+    regexp: ^(?i)StopIdleSessionSec=
+    line: "StopIdleSessionSec={{ ssh_stig_timeout }}"
+    state: present
+  notify: restart_logind
+
+- name: security playbook - Verify /etc/systemd/logind.conf - V-257258
+  replace: 
+    path: /etc/systemd/logind.conf
+    regexp: ^(?i)StopIdleSessionSec=
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+
+- name: Cleaning up nfs_share mount #Currently not working. I get errors that directory not empty or busy
+  mount:
+    src: "{{ nfs_share }}"
+    path: "{{ backup_mount_snow }}"
+    state: absent
+    fstype: nfs
+  changed_when: false
+  when: mode in ["backup", "restore"]
+  tags: mount

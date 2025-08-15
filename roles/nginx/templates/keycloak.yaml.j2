@@ -1,0 +1,18 @@
+server {
+    server_name  "{{ fqdn }}";
+
+    listen 443 ssl;
+
+    include "{{ ssl_config }}/*.conf";
+    ssl_verify_client optional_no_ca;
+
+    location / {
+            proxy_hide_header Access-Control-Allow-Origin;
+            if ($http_origin ~* "^https?://.*\.yuma.army.mil"){
+                add_header Access-Control-Allow-Origin $http_origin always;
+            }
+            proxy_pass "http://{{ app_server }}:{{ app_port }}";
+            proxy_set_header        ssl-client-cert    $ssl_client_escaped_cert;
+            include "{{ proxy_config }}/*.conf";
+    }
+}

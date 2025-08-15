@@ -1,0 +1,32 @@
+# Site
+prod: false
+prep: true
+docker_host: YPGRW04XAAA0H9E
+sql_svc_acct: "AutomationWorkerPrep"
+rhss_register: "'https://rhss.yuma.army.mil/register?activation_keys=rhel8-ican-prep&operatingsystem_id=1&organization_id=1&update_packages=false'"
+rhss_auth: "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjo1LCJpYXQiOjE3MDczMzkzNTcsImp0aSI6IjlkODkzYTU2NGYyOWI3NzQ5MGNiZTMwMzJkYTU2M2ZjNjhiOWEzNWU4NWE1NzgzNzNjYzEzYmU5ZDg3YmEzMmUiLCJzY29wZSI6InJlZ2lzdHJhdGlvbiNnbG9iYWwgcmVnaXN0cmF0aW9uI2hvc3QifQ.YXToF-ou6jBwDXbBHZKta3_8cvMVgzDDVD-Z-CqYpZk"
+
+# Container Application Backups
+volume_backups: 1
+
+# VMWare
+vcenter_hostname: "vcs.yuma.army.mil"
+vcenter_username: "api@vsphere.local"
+vcenter_datacenter: "UCS-Prep"
+vcenter_validate_certs: false
+vm_folder: "NEC-ISMO"
+vm_guestid: "ubuntu64Guest"
+vm_disk_gb: 80
+vm_disk_type: "thick"
+vm_state: "powered-on"
+vm_disk_datastore: "VMware-prep"
+vm_hw_ram_mb: 8192
+vm_hw_cpu_n: 4
+vm_hw_scsi: "paravirtual"
+vm_net_name: "VLAN630_LinuxDeployment"
+vm_net_type: "vmxnet3"
+vm_template: "template_ubuntu-24.04"
+
+
+# ServiceNOW
+snow_db: "servicenow_16001"

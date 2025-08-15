@@ -1,0 +1,61 @@
+- import_role:
+    name: 'docker_host'
+  when: run_docker
+
+- name: Create Minio compose directory
+  file:
+    state: directory
+    path: "{{ minio_compose_path }}"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Ensure compose file exists
+  stat:
+    path: "{{ minio_compose_path }}/compose.yaml"
+  register: compose_file_status
+
+- name: Create compose file
+  template:
+    src: compose.yaml.j2
+    dest: "{{ minio_compose_path }}/compose.yaml"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+  when: (mode in ["update", "deploy"]) or (not compose_file_status.stat.exists)
+  
+- name: Stop Minio service
+  command:
+    cmd: "docker compose down"
+    chdir: "{{ minio_compose_path }}"
+  changed_when: false
+  when: mode in ["update", "bounce", "backup", "restore"]
+
+- name: Backup Minio 
+  import_tasks: backup.yml
+  when: mode in ["backup", "update"]
+
+- name: Update Minio image
+  command:
+    cmd: 'docker compose pull'
+    chdir: "{{ minio_compose_path }}"
+  changed_when: false
+  when: mode in ["update"]
+
+- name: Restore Minio
+  import_tasks: restore.yml
+  when: mode in ["restore"]
+
+- name: Start Minio service
+  command:
+    cmd: 'docker compose up -d'
+    chdir: "{{ minio_compose_path }}"
+  changed_when: false
+
+- name: Cleaning up backup mount
+  mount:
+    src: "{{ backup_share }}"
+    path: "{{backup_mount_dir_minio}}"
+    state: absent
+    fstype: nfs
+  changed_when: false

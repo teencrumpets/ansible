@@ -1,0 +1,4 @@
+retry_health_task: 25
+time_between_task_attempts: 20
+compose_file_path: /home/ypgansible/compose.yaml
+managed_compose: true

@@ -1,0 +1,42 @@
+trigger: none
+
+pool:
+  name: 'nec_triggered_L'
+
+variables:
+  - group: Ansible
+
+steps:
+- script: |
+    agent_name=$(echo $(Agent.Name) | tr -d '_')
+    echo "##vso[task.setvariable variable=build_agent]$agent_name"
+  displayName: 'Set filtered agent_name'
+
+- script: python3 -m pip install --upgrade pip
+  displayName: 'Upgrade pip'
+
+- script: python3 -m pip install --upgrade ansible
+  displayName: 'Install ansible'
+  
+- task: DownloadSecureFile@1
+  name: vault_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: 'vault_key_dev'
+
+- script: >
+    ansible-playbook dynamic-site.yml -e 
+    "ENV=dev
+    role=rhel8
+    vm_operating_system='RHEL'
+    HOSTS=$(vm_name)
+    rm_hosts_file=/home/ado_build_agent/.ssh/known_hosts 
+    validation_group='rhel8_validation'
+    vm_template="rhel8-template"
+    agent_name=$(build_agent) 
+    register=true
+    vm_cleanup=true
+    check_vm=''
+    build_agent_name=$(Agent.Name)" 
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Validating Rhel8 role'

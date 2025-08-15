@@ -1,0 +1,266 @@
+# Runtime settings
+gannon_ip_range: 6.2.2.0/26 
+verify_hostname: true
+valid_name: true
+hostname: "{{ inventory_hostname }}"
+temp_dir: '/tmp/certs'
+valid_name: true
+run_dod_certs: true
+
+# Site settings
+time_server_ip: '10.2.2.1'
+syslog_ip: '6.2.4.36'
+syslog_port: '10614'
+rsyslog_audit_port: '10617'
+disa_url: 'https://public.cyber.mil/pki-pke/pkipke-document-library/'
+grub_hash: 'grub.pbkdf2.sha512.10000.B690566806DB47903DEC3440C177908D31A273F2EF940A19C354B2822C566BC1E8F44C3281D0CBFE87E9A5A143D15BDE1A317E22EF7C1E6CFE9DF4C14D657E38.03FC750945C02BC72A164A202834EAD5953DB691E72836738F9AD1B6DE45BFA10B897220C9D90363E57AAECF296184E5533372AD65379D9C9DACDF7308BF930F'
+verify_hostname: true
+manage_users_profiles: true
+install_nessus: false
+
+# OS Defaults
+uid_min: 10000
+uid_max: 6000000
+gid_min: 10000
+gid_max: 6000000
+UMASK: '077'
+ufw_allow_routed: false
+
+# UFW
+block_gannon: false
+ufw_defaults:
+  - order: 100
+    rule: 'allow'
+    direction: 'in'
+    from_ip: 6.2.69.0/24
+    proto: 'tcp'
+    to_port: 22
+    description: "Allow SSH from SA subnet"
+
+  - order: 200
+    rule: 'allow'
+    direction: 'in'
+    from_ip: 6.2.74.0/25
+    proto: 'tcp'
+    to_port: 22
+    description: "Allow SSH from SA VPN subnet"
+
+  - order: 300
+    rule: 'allow'
+    direction: 'in'
+    from_ip: 6.4.0.64/26
+    proto: 'tcp'
+    to_port: 22
+    description: "Allow SSH from SA fabric range"
+
+  - order: 500
+    rule: 'allow'
+    direction: 'in'
+    from_ip: 6.2.4.3
+    proto: 'tcp'
+    to_port: 22
+    description: "Allow SSH from build agent (24.04)"
+
+# Audit_Rules
+manage_ubuntu_V_270684: true
+manage_ubuntu_V_270685: true
+manage_ubuntu_V_270686: true
+manage_ubuntu_V_270687: true
+manage_ubuntu_V_270688: true
+manage_ubuntu_V_270689: true
+manage_ubuntu_V_270715: true
+manage_ubuntu_V_270740: true
+manage_ubuntu_V_270778: true
+manage_ubuntu_V_270779: true
+manage_ubuntu_V_270780: true
+manage_ubuntu_V_270781: true
+manage_ubuntu_V_270782: true
+manage_ubuntu_V_270783: true
+manage_ubuntu_V_270784: true
+manage_ubuntu_V_270785: true
+manage_ubuntu_V_270786: true
+manage_ubuntu_V_270787: true
+manage_ubuntu_V_270788: true
+manage_ubuntu_V_270789: true
+manage_ubuntu_V_270790: true
+manage_ubuntu_V_270791: true
+manage_ubuntu_V_270792: true
+manage_ubuntu_V_270793: true
+manage_ubuntu_V_270794: true
+manage_ubuntu_V_270795: true
+manage_ubuntu_V_270796: true
+manage_ubuntu_V_270797: true
+manage_ubuntu_V_270798: true
+manage_ubuntu_V_270799: true
+manage_ubuntu_V_270800: true
+manage_ubuntu_V_270801: true
+manage_ubuntu_V_270802: true
+manage_ubuntu_V_270803: true
+manage_ubuntu_V_270804: true
+manage_ubuntu_V_270805: true
+manage_ubuntu_V_270806: true
+manage_ubuntu_V_270807: true
+manage_ubuntu_V_270808: true
+manage_ubuntu_V_270809: true
+manage_ubuntu_V_270810: true
+manage_ubuntu_V_270811: true
+manage_ubuntu_V_270812: true
+manage_ubuntu_V_270813: true
+manage_ubuntu_V_270814: true
+manage_ubuntu_V_270815: true
+
+# Audit
+manage_ubuntu_V_270751: true
+manage_ubuntu_V_270752: true
+manage_ubuntu_V_270775: true
+manage_ubuntu_V_270776: true
+manage_ubuntu_V_270777: true
+manage_ubuntu_V_270816: true
+manage_ubuntu_V_270818: true
+manage_ubuntu_V_270819: true
+manage_ubuntu_V_270820: true
+manage_ubuntu_V_270821: true
+manage_ubuntu_V_270822: true
+manage_ubuntu_V_270823: true
+manage_ubuntu_V_270824: true
+manage_ubuntu_V_270825: true
+manage_ubuntu_V_270826: true
+manage_ubuntu_V_270827: true
+manage_ubuntu_V_270828: true
+manage_ubuntu_V_270829: true
+manage_ubuntu_V_270830: true
+manage_ubuntu_V_270832: true
+manage_auditlog_offloading: true
+
+# Filesystem
+manage_ubuntu_V_270697: true
+manage_ubuntu_V_270698: true
+manage_ubuntu_V_270699: true
+manage_ubuntu_V_270700: true
+manage_ubuntu_V_270701: true
+manage_ubuntu_V_270702: true
+manage_ubuntu_V_270703: true
+manage_ubuntu_V_270716: true
+manage_ubuntu_V_270750: true
+manage_ubuntu_V_270756: true
+manage_ubuntu_V_270757: true
+manage_ubuntu_V_270758: true
+manage_ubuntu_V_270759: true
+manage_ubuntu_V_270760: true
+manage_ubuntu_V_270761: true
+manage_ubuntu_V_270762: true
+manage_ubuntu_V_270763: true
+manage_ubuntu_V_270764: true
+manage_ubuntu_V_270765: true
+manage_ubuntu_V_270766: true
+manage_ubuntu_V_270767: true
+manage_ubuntu_V_270768: true
+manage_ubuntu_V_270769: true
+manage_ubuntu_V_270770: true
+
+# Login
+manage_ubuntu_V_270677: true
+manage_ubuntu_V_270680: true
+manage_ubuntu_V_270691: true
+manage_ubuntu_V_270692: true
+manage_ubuntu_V_270693: true
+manage_ubuntu_V_270694: true
+manage_ubuntu_V_270720: true
+manage_ubuntu_V_270724: true
+manage_ubuntu_V_270730: true
+manage_ubuntu_V_270731: true
+manage_ubuntu_V_270736: true
+manage_ubuntu_V_270739: true
+
+# Packages
+manage_ubuntu_V_270645: true
+manage_ubuntu_V_270646: true
+manage_ubuntu_V_270647: true
+manage_ubuntu_V_270648: true
+manage_ubuntu_V_270649: true
+manage_ubuntu_V_270654: true
+manage_ubuntu_V_270656: true
+manage_ubuntu_V_270664: true
+manage_ubuntu_V_270674: true
+manage_ubuntu_V_270657: true
+manage_ubuntu_V_270658: true
+manage_ubuntu_V_270659: true
+manage_ubuntu_V_270660: true
+manage_ubuntu_V_270662: true
+manage_ubuntu_V_270663: false
+manage_ubuntu_V_270665: true
+manage_ubuntu_V_270672: true
+manage_ubuntu_V_270678: true
+manage_ubuntu_V_270679: true
+manage_ubuntu_V_270711: true
+manage_ubuntu_V_270746: true
+
+# PAM
+manage_ubuntu_V_270661: true
+manage_ubuntu_V_270673: true
+manage_ubuntu_V_270690: true
+manage_ubuntu_V_270705: true
+manage_ubuntu_V_270706: true
+manage_ubuntu_V_270714: true
+manage_ubuntu_V_270721: true
+manage_ubuntu_V_270723: true
+manage_ubuntu_V_270725: true
+manage_ubuntu_V_270738: true
+
+# Security
+manage_ubuntu_V_270670: true
+manage_ubuntu_V_270671: true
+manage_ubuntu_V_270682: true
+manage_ubuntu_V_270683: true
+manage_ubuntu_V_270695: true
+manage_ubuntu_V_270696: true
+manage_ubuntu_V_270704: true
+manage_ubuntu_V_270707: false
+manage_ubuntu_V_270712: true
+manage_ubuntu_V_270713: true
+manage_ubuntu_V_270726: true
+manage_ubuntu_V_270727: true
+manage_ubuntu_V_270728: true
+manage_ubuntu_V_270729: true
+manage_ubuntu_V_270732: true
+manage_ubuntu_V_270733: true
+manage_ubuntu_V_270744: true
+manage_ubuntu_V_270745: true
+manage_ubuntu_V_270747: true
+manage_ubuntu_V_270748: true
+manage_ubuntu_V_270749: true
+manage_ubuntu_V_270771: true
+manage_ubuntu_V_270772: true
+manage_ubuntu_V_270773: true
+manage_ubuntu_V_270774: true
+
+# SSHD
+manage_ubuntu_V_270666: true
+manage_ubuntu_V_270667: true
+manage_ubuntu_V_270668: true
+manage_ubuntu_V_270669: true
+manage_ubuntu_V_270708: true
+manage_ubuntu_V_270709: true
+manage_ubuntu_V_270717: true
+manage_ubuntu_V_270722: true
+manage_ubuntu_V_270741: true
+manage_ubuntu_V_270742: true
+manage_ubuntu_V_270743: true
+
+# UFW
+manage_ubuntu_V_270655: true
+manage_ubuntu_V_270719: true
+manage_ubuntu_V_270754: true
+
+# Grub
+manage_ubuntu_V_270675: true
+manage_ubuntu_V_270676: true
+
+# Devices
+manage_ubuntu_V_270718: true
+manage_ubuntu_V_270755: true
+
+# Logging
+manage_ubuntu_V_270653: true
+manage_ubuntu_V_270681: true
+manage_ubuntu_V_270753: true

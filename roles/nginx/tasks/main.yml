@@ -1,0 +1,45 @@
+- import_role:
+    name: 'docker_host'
+  when: run_docker
+
+- name: Create Nginx compose directory
+  file:
+    state: directory
+    path: "{{ compose_path }}"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Stopping Nginx service
+  command:
+    cmd: "docker compose down"
+    chdir: "{{ compose_path }}"
+  changed_when: false
+  when: nginx_mode in ["bounce", "update"]
+
+- name: Deploy Nginx
+  import_tasks: deploy.yml
+  when: nginx_mode in ["deploy", "update"]
+
+- name: Update Nginx image
+  command:
+    cmd: 'docker compose pull'
+    chdir: "{{ compose_path }}"
+  changed_when: false
+  when: nginx_mode in ["update"]
+  
+- name: Configure Nginx
+  import_tasks: config.yml
+  when: nginx_mode in ["add_service", "remove_service", "deploy", "update", "bounce"]
+
+- import_role:
+    name: 'container_health'
+  when: nginx_mode in ["deploy", "update", "bounce"]
+
+- name: Cleaning up NFS mount
+  mount:
+    src: "{{ nfs_share }}"
+    path: "{{ nec_svr_ops_dir_nginx }}"
+    state: absent
+    fstype: nfs
+  changed_when: false

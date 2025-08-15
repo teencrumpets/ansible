@@ -1,0 +1,27 @@
+# keycloak compose config
+kc_db_container_name: kc_postgres
+keycloak_subnet: 192.168.0.64/26
+harbor_url_for_postgres: registry.web.yuma.army.mil/library/postgres
+postgres_version_tag: 16.8_ypg_2025-04-17_20-08-11
+keycloak_db: kc_db
+keycloak_port: 8080
+adc_keycloak_container_name: keycloak
+harbor_url_for_keycloak: registry.web.yuma.army.mil/library/keycloak
+keycloak_version_tag: 26.2.1_ypg_2025-07-14_20-44-20
+kc_db_volume: "adc_keycloak_database"
+cert_volume: "adc_keycloak_cert"
+compose_path: '/opt/compose/{{ adc_keycloak_container_name }}'
+postgres_keycloak_user: admin
+kc_admin: ypgadmin
+keycloak_service_template: 'keycloak.yaml.j2'
+volume_backups: 1
+
+
+#Keycloak backup
+postgres_restore_dir: "{{ backup_mount_dir_keycloak }}/docker_volumes/keycloak/prod/database"
+postgres_backup_dir: "{{ backup_mount_dir_keycloak }}/docker_volumes/keycloak/{{ ENV }}/database"
+trust_store_path: "{{ nec_svr_ops_dir_keycloak }}/docker_volumes/truststore/cacerts_dod_usa"
+
+#Mounts
+nec_svr_ops_dir_keycloak: "{{ nec_svr_ops_dir }}/keycloak"
+backup_mount_dir_keycloak: "{{ backup_mount_dir }}/keycloak"

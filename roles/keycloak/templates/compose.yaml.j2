@@ -1,0 +1,67 @@
+services:
+  keycloak:
+    container_name: {{ adc_keycloak_container_name }}
+    image: {{ harbor_url_for_keycloak }}:{{ keycloak_version_tag }}
+    command:
+      [
+        "start"
+      ]
+    environment:
+      KC_HOSTNAME: https://{{ keycloak_hostname }}
+      KC_HOSTNAME_STRICT: true
+      KC_HTTP_PORT: 8080
+      KC_HTTP_ENABLED: true
+      KC_PROXY: edge
+      KC_PROXY_HEADERS: xforwarded
+      KC_SPI_X509CERT_LOOKUP_PROVIDER: nginx
+      KC_SPI_X509CERT_LOOKUP_NGINX_SSL_CLIENT_CERT: ssl-client-cert
+      KC_SPI_TRUSTSTORE_FILE_FILE: /certs/cacerts
+      KC_SPI_TRUSTSTORE_FILE_PASSWORD: {{ trust_store_pass }}
+      KC_SPI_TRUSTSTORE_FILE_TYPE: JKS
+      #KC_HTTPS_TRUST_STORE_FILE: /certs/cacerts
+      #KC_HTTPS_TRUST_STORE_PASSWORD:
+      #KC_HTTPS_TRUST_STORE_TYPE: JKS
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://kc_postgres/kc_db
+      KC_DB_USERNAME: {{ postgres_keycloak_user }}
+      KC_DB_PASSWORD: {{ postgres_keycloak_pw }}
+    depends_on:
+      - postgres
+    volumes:
+      - 'cert:/certs'
+    ports:
+      - {{ keycloak_port }}:8080
+    logging:
+      options:
+        tag: {{ adc_keycloak_container_name }}
+    networks:
+      - internal_net
+
+  postgres:
+    container_name: {{ kc_db_container_name }}
+    image: {{ harbor_url_for_postgres }}:{{ postgres_version_tag }}
+    environment:
+      POSTGRES_DB: kc_db
+      POSTGRES_USER: {{ postgres_keycloak_user }}
+      POSTGRES_PASSWORD: {{ postgres_keycloak_pw }}
+    volumes:
+      - 'database:/var/lib/postgresql/data'
+    logging:
+      options:
+        tag: {{ kc_db_container_name }}
+    networks:
+      - internal_net
+
+volumes:
+  database:
+    name: {{ kc_db_volume }}
+  cert:
+    name: {{ cert_volume }}
+
+networks:
+  internal_net:
+    driver: bridge
+    ipam:
+     driver: default
+     config:
+       - subnet: "{{ keycloak_subnet }}"

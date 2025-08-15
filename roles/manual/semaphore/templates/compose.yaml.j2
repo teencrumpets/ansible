@@ -1,0 +1,24 @@
+services:
+  semaphore:
+    ports:
+      - 3000:3000
+    image: semaphoreui/semaphore:v2.8.90
+    container_name: semaphore
+    restart: unless-stopped
+    environment:
+      SEMAPHORE_DB_DIALECT: bolt
+      SEMAPHORE_ADMIN_PASSWORD: changeme
+      SEMAPHORE_ADMIN_NAME: ypgadmin
+      SEMAPHORE_ADMIN_EMAIL: admin@localhost
+      SEMAPHORE_ADMIN: ypgadmin
+    volumes:
+      - semaphore-home:/etc/semaphore
+      - semaphore-data:/var/lib/semaphore
+      - semaphore-inv:/mnt/ansible
+volumes:
+  semaphore-home:
+    name: semaphore-home
+  semaphore-data:
+    name: semaphore-data
+  semaphore-inv:
+    name: semaphore-inv

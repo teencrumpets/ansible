@@ -1,0 +1,239 @@
+# COPYRIGHTS AND PERMISSIONS:
+# Copyright 2024 MORSECORP, Inc. All rights reserved.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+# WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS
+# OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+# OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+networks:
+  keystone-network:
+    name: keystone
+    driver: bridge
+
+services:
+  nginx:
+    container_name: "keystone-nginx"
+    platform: linux/amd64
+    hostname: addams-nginx
+    image: "registry.web.yuma.army.mil/library/keystone_frontend:morse_latest_ypg_2025-04-10_17-20-43"
+    user: ${DOCKER_USER}
+    restart: always
+    volumes:
+      - ./server.crt:/etc/ssl/server.crt
+      - ./server.key:/etc/ssl/server.key
+    ports:
+      - ${NGINX_PORT:-8889}:443
+      - "8080:80"
+    env_file:
+      - .env
+    networks: [ keystone-network ]
+
+  backend:
+    container_name: "keystone-backend"
+    platform: linux/amd64
+    hostname: addams-api
+    image: "registry.web.yuma.army.mil/library/keystone_backend:morse_latest_ypg_2025-04-10_18-15-39"
+    user: ${DOCKER_USER}
+    depends_on:
+      - db
+      - celery-db
+      - rabbitmq
+    restart: always
+    entrypoint: ./start_backend.sh
+    env_file:
+      - .env
+    environment:
+      AUTH_M2M_ALLOW: "False"
+    networks: [ keystone-network ]
+    volumes:
+      - ${HOST_DATA_DIRECTORY:-./files}:${CONTAINER_DATA_DIRECTORY:-/tmp/keystone/files}
+      - ./mtls/server-key.pem:/etc/ssl/server-key.pem
+      - ./mtls/server.pem:/etc/ssl/server.pem
+      - ./mtls/ca.pem:/etc/ssl/ca.pem
+    healthcheck:
+      test: [
+        "CMD-SHELL",
+        "curl -f http://localhost:8000/api/v1",
+        "&&",
+        "curl",
+        "--cacert /etc/ssl/ca.pem",
+        "--key /etc/ssl/server-key.pem",
+        "--cert /etc/ssl/server.pem",
+        "-f https://addams-api:8001/api/v1"
+      ]
+      interval: 60s
+      retries: 12
+      timeout: 2m
+
+  db:
+    container_name: "keystone-backend-db"
+    platform: linux/amd64
+    hostname: addams-db
+    image: "registry.web.yuma.army.mil/library/keystone_postgresql:morse_latest_ypg_2025-04-10_18-21-49"
+    restart: always
+    command: postgres -c 'max_connections=1000'
+    user: ${DOCKER_USER}
+    env_file:
+      - .env
+    environment:
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-addams}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ${COTS_DATA_DIRECTORY:-./service-data}/database-data:/var/lib/postgresql/data
+    networks: [ keystone-network ]
+    healthcheck:
+      test: [ "CMD", "pg_isready" ]
+      interval: 60s
+      retries: 12
+      timeout: 2m
+  
+  keycloak-db:
+    container_name: keystone-keycloak-db
+    platform: linux/amd64
+    hostname: keycloak-db
+    image: registry.web.yuma.army.mil/library/keystone_postgresql:morse_latest_ypg_2025-04-10_18-21-49
+    user: ${DOCKER_USER}
+    environment:
+      POSTGRES_DB: ${KC_DB_NAME:-keycloak}
+      POSTGRES_USER: ${KC_DB_USER}
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD}
+      PGPORT: 5433
+    volumes:
+      - ${COTS_DATA_DIRECTORY:-./service-data}/keycloak-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD", "pg_isready" ]
+      interval: 10s
+      retries: 12
+      timeout: 2m
+    networks: [ keystone-network ]
+
+  celery-db:
+    container_name: "keystone-celery-db"
+    platform: linux/amd64
+    hostname: celery-db
+    image: "registry.web.yuma.army.mil/library/keystone_postgresql:morse_latest_ypg_2025-04-10_18-21-49"
+    restart: always
+    user: ${DOCKER_USER}
+    environment:
+      CELERY_DB_USER: ${CELERY_DB_USER}
+      CELERY_DB_PASSWORD: ${CELERY_DB_PASSWORD}
+      POSTGRES_DB: ${CELERY_DB_NAME:-celery}
+      POSTGRES_USER: ${CELERY_DB_USER}
+      POSTGRES_PASSWORD: ${CELERY_DB_PASSWORD}
+    volumes:
+      - ${COTS_DATA_DIRECTORY:-./service-data}/celery-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD", "pg_isready" ]
+      interval: 10s
+      retries: 12
+      timeout: 2m
+    networks: [ keystone-network ]
+
+  rabbitmq:
+    container_name: "keystone-rabbitmq"
+    platform: linux/amd64
+    hostname: addams-rabbitmq
+    image: "registry.web.yuma.army.mil/library/keystone_rabbitmq:morse_latest_ypg_2025-04-10_18-24-06"
+    restart: always
+    user: ${DOCKER_USER}
+    volumes:
+      - ${COTS_DATA_DIRECTORY:-./service-data}/rabbitmq-data:/bitnami/rabbitmq/mnesia
+    env_file:
+      - .env
+    environment:
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      RABBITMQ_DISK_FREE_ABSOLUTE_LIMIT: ${RABBITMQ_DISK_FREE_ABSOLUTE_LIMIT}
+    networks: [ keystone-network ]
+
+  worker-common:
+    container_name: "keystone-worker-common"
+    platform: linux/amd64
+    hostname: addams-worker-common
+    image: "registry.web.yuma.army.mil/library/keystone_workercommon:morse_latest_ypg_2025-04-10_17-15-27"
+    user: ${DOCKER_USER}
+    restart: always
+    command: ["python", "worker_common"]
+    volumes:
+      - ./mtls/common-client.pem:/etc/ssl/client.pem
+      - ./mtls/common-client-key.pem:/etc/ssl/client-key.pem
+      - ./mtls/ca.pem:/etc/ssl/ca.pem
+    env_file:
+      - .env
+    networks: [ keystone-network ]
+
+  worker-ml:
+    container_name: "keystone-worker-ml"
+    platform: linux/amd64
+    hostname: addams-worker-ml
+    image: "registry.web.yuma.army.mil/morse/keystone_workerml:morse_latest"
+    restart: always
+    command: [ "poetry", "run", "python", "worker_ml" ]
+    user: ${DOCKER_USER}
+    volumes:
+      - ./mtls/ml-client.pem:/etc/ssl/client.pem
+      - ./mtls/ml-client-key.pem:/etc/ssl/client-key.pem
+      - ./mtls/ca.pem:/etc/ssl/ca.pem
+    env_file:
+      - .env
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    networks: [ keystone-network ]
+
+  file-share-mgr-service:
+    container_name: "keystone-file-share-mgr"
+    platform: linux/amd64
+    hostname: addams-file-share-mgr-service
+    image: "registry.web.yuma.army.mil/library/keystone_filesharemgr:morse_latest_ypg_2025-04-10_18-17-49"
+    user: ${DOCKER_USER}
+    command: ["python", "-u", "file_service"]
+    restart: always
+    env_file:
+      - .env
+    environment:
+      KEYSTONE_BASE_URL: https://addams-api:8001
+      WATCHDOG_FILE_DIR: /opt/python-environment/file-share
+    volumes:
+      - ${HOST_FILE_SHARE_DIRECTORY:-./test_files}:/opt/python-environment/file-share
+      - ./mtls/file-client.pem:/etc/ssl/client.pem
+      - ./mtls/file-client-key.pem:/etc/ssl/client-key.pem
+      - ./mtls/ca.pem:/etc/ssl/ca.pem
+    networks: [ keystone-network ]
+  
+  keycloak:
+    container_name: keystone-keycloak
+    platform: linux/amd64
+    hostname: keycloak
+    image: registry.web.yuma.army.mil/library/keystone_keycloak:morse_latest_ypg_2025-04-10_22-29-58
+    restart: always
+    env_file:
+      - .env
+    environment:
+      KC_DB: postgres
+      KC_DB_URL_HOST: ${KC_DB_HOST:-keycloak-db}
+      KC_DB_URL_PORT: 5433
+      KC_DB_USER: ${KC_DB_USER}
+      KC_DB_USERNAME: ${KC_DB_USER}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      KC_HTTP_HOST: keycloak
+      KC_HTTP_PORT: 8080
+      KC_HTTPS_PORT: ${NGINX_PORT:-8889}
+      KC_HEALTH_ENABLED: true
+    command:
+      [
+        "start",
+        "--import-realm",
+        "--http-relative-path=/auth",
+        "--proxy=edge"
+      ]
+    depends_on:
+      - keycloak-db
+    networks: [ keystone-network ]

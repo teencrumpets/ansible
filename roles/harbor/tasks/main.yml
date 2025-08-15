@@ -1,0 +1,71 @@
+- import_role:
+    name: 'docker_host'
+  when: run_docker
+
+- name: Defining health-check paramters
+  set_fact:
+    managed_compose: false
+    compose_file_path: '{{ harbor_install_dir }}/docker-compose.yml'
+
+- name: Configuring hosts file
+  lineinfile:
+    path: /etc/hosts
+    line: "{{ item.line }}"
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { line: '185.199.111.133 objects.githubusercontent.com', regexp: '^(?!#).*objects\.githubusercontent\.com' }
+
+- name: Verify hosts file
+  replace:
+    path: /etc/hosts
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  with_items:
+    - { regexp: '^(?!#).*objects\.githubusercontent\.com' }
+
+- name: Create backup mount directory
+  file:
+    state: directory
+    path: '{{ backup_mount_dir_harbor }}'
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Backup Harbor
+  import_tasks: backup.yml
+  when: mode in ["backup", "update"]
+
+- name: Deploy Harbor
+  import_tasks: deploy.yml
+  when: mode in ["deploy", "update"]
+
+- name: Restore Harbor
+  import_tasks: restore.yml
+  when: mode in ["restore"]
+
+- name: Stopping Harbor service
+  command:
+    cmd: 'docker compose down'
+    chdir: '{{ harbor_install_dir }}'
+  when: mode in ["bounce"]
+    
+- name: Starting Harbor service
+  command:
+    cmd: 'docker compose up -d'
+    chdir: '{{ harbor_install_dir }}'
+  when: mode in ["restore", "update", "backup", "deploy", "bounce"]
+
+- name: Cleaning up backup mount
+  mount:
+    src: "{{ backup_share }}"
+    path: "{{backup_mount_dir_harbor}}"
+    state: absent
+    fstype: nfs
+  changed_when: false
+
+- import_role:
+    name: 'container_health'

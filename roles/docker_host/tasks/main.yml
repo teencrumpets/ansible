@@ -1,0 +1,174 @@
+- import_role:
+    name: 'ubuntu'
+  when: run_ubuntu
+
+- name: Install dependencies
+  package: 
+    name: "{{ item.name }}"
+    state: present 
+  with_items:
+    - { name: ca-certificates }
+    - { name: curl }
+    - { name: gnupg }
+    - { name: lsb-release }
+
+- name: Copy DoD Root CA
+  copy:
+    src: dod_root_ca_3.crt
+    dest: /usr/local/share/ca-certificates/dod_root_ca_3.crt
+  register: ca_installed
+
+- name: Update truststore
+  shell: 'update-ca-certificates'
+  when: ca_installed.changed
+
+- name: Create APT Key directory
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: 0775
+
+- name: Install Docker signing key
+  command: 
+    cmd: curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+    creates: /etc/apt/keyrings/docker.asc
+
+- name: Change docker key file ownership
+  file:
+    path: /etc/apt/keyrings/docker.asc
+    mode: 0644
+
+- name: Add Docker repo
+  lineinfile:
+    path: /etc/apt/sources.list.d/docker.list
+    line: 'deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc]  https://download.docker.com/linux/ubuntu noble stable'
+    state: present
+    regexp: '^(?!#).*download\.docker\.com\/linux\/ubuntu'
+    create: true
+  register: docker_repo
+
+- name: Verify Docker repo
+  replace:
+    path: /etc/apt/sources.list.d/docker.list
+    regexp: '^(?!#).*download\.docker\.com\/linux\/ubuntu'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+
+- name: Update apt
+  apt:
+    update_cache: yes
+  failed_when: false
+  when: docker_repo.changed
+
+- name: Install Docker CE
+  package: 
+    name: "{{ item.name }}"
+    state: present 
+  with_items:
+    - { name: docker-ce }
+    - { name: docker-ce-cli }
+    - { name: containerd.io }
+    - { name: docker-compose-plugin }
+
+- name: Enable Docker service
+  service:
+    name: docker
+    enabled: true
+    state: started
+
+- name: Configure ypgansible user
+  user:
+    name: ypgansible
+    groups: docker
+    append: yes
+
+- name: Merge default Docker settings with any host specific settings (if any are defined)
+  set_fact: 
+    merged_daemon_list: "{{ default_docker_daemon | combine(host_docker_daemon) if host_docker_daemon is defined else default_docker_daemon }}"
+
+- name: Write merged Docker settings as json deamon config file
+  copy:
+    dest: /etc/docker/daemon.json
+    content: "{{ merged_daemon_list | to_nice_json }}"
+
+- name: Restart Docker service
+  service:
+    name: docker
+    state: restarted
+  when: disruptive_mode
+
+- name: Get all images from harbor library
+  uri:
+    url: "https://{{harbor_name}}/api/v2.0/projects/{{harbor_project}}/repositories"
+    method: GET
+    user: "{{harbor_service_account}}"
+    password: "{{harbor_service_account_pass}}"
+    force_basic_auth: true
+    return_content: true
+    status_code: 200
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+    body_format: json
+    validate_certs: no
+  register: images
+  when: mode in ["continuous_scanning"] 
+
+- name: Get image names
+  set_fact:
+    image_names: "{{ images.json | map(attribute='name') | map('regex_replace', '^' + harbor_project + '/', '')}}"
+  when: mode in ["continuous_scanning"] 
+
+- name: Get all image tags from harbor library
+  uri:
+    url: "https://{{harbor_name}}/api/v2.0/projects/{{harbor_project}}/repositories/{{item}}/artifacts?with_tag=true"
+    method: GET
+    user: "{{harbor_service_account}}"
+    password: "{{harbor_service_account_pass}}"
+    force_basic_auth: true
+    return_content: true
+    status_code: 200
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+    body_format: json
+    validate_certs: no
+  register: image_tags
+  loop: "{{image_names}}"
+  when: mode in ["continuous_scanning"] 
+  
+- name: Renew Kerberos Ticket
+  import_tasks: renew.yml
+  when: mode in ["continuous_scanning"]
+
+- name: Assess container images
+  include_tasks: assess_image.yml
+  loop: "{{image_tags.results}}"
+  vars:
+    image_repo: "{{item.json[0].repository_name}}"
+    image_tag: "{{item.json[0].tags[0].name}}"
+  when: mode in ["continuous_scanning"]
+
+- name: Assess container image
+  import_tasks: assess_image.yml
+  when: mode in ["assess_image"]
+
+- name: Assess container image
+  import_tasks: push_image.yml
+  when: mode in ["push_image"]
+
+- name: Update Vuln Database
+  import_tasks: update_vuln_database.yml
+  when: mode in ["update_trivy_db"]
+
+- name: Cleaning up nec_app
+  mount:
+    path: '{{image_assessment_share}}'
+    state: absent
+    fstype: nfs
+  changed_when: false
+  delegate_to: localhost
+  when: mode in ["continuous_scanning"]

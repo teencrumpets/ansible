@@ -1,0 +1,82 @@
+- name: Copy service file
+  template:
+    src: "{{ service_template }}"
+    dest: "{{ config_path }}/{{ service_config }}"
+    owner: ypgansible
+    group: docker
+    mode: 0775
+  when: (nginx_mode in ["add_service"]) and (service_config is defined)
+
+- name: Copy HTTPS Default config
+  template:
+    src: "https_default.yaml.j2"
+    dest: "{{ config_path }}/https_default.conf"
+    owner: ypgansible
+    group: docker
+    mode: 0775
+
+- name: Remove service file
+  file:
+    path: "{{ config_path }}/{{ config_file }}"
+    state: absent
+  when: (config_file is defined) and (nginx_mode in ["remove_service"])
+
+- name: Create SSL config directory
+  file:
+    state: directory
+    path: "{{ ssl_conf_path }}"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Copy SSL config
+  template:
+    src: ssl.conf.j2
+    dest: "{{ ssl_conf_path }}/default.conf"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Create SSL password file
+  lineinfile:
+    create: true
+    path: "/var/lib/docker/volumes/{{ cert_volume }}/_data/ssl.pass"
+    line: "{{ ssl_password }}"
+    mode: 0600
+  changed_when: false
+
+- name: Create proxy config directory
+  file:
+    state: directory
+    path: "{{ proxy_conf_path }}"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Copy proxy config
+  copy:
+    src: proxy.conf
+    dest: "{{ proxy_conf_path }}/default.conf"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Reload Nginx config files
+  command:
+    cmd: "docker exec {{ nginx_name }} nginx -s reload"
+    chdir: "{{ compose_path }}"
+  when: nginx_mode in ['add_service', "remove_service"]
+  changed_when: false
+
+- name: Start Nginx service
+  command:
+    cmd: 'docker compose up -d'
+    chdir: "{{ compose_path }}"
+  changed_when: false
+  when: nginx_mode in ["deploy", "update", "bounce"]
+  
+- name: Remove SSL password file
+  file:
+    path: "/var/lib/docker/volumes/{{ cert_volume }}/_data/ssl.pass"
+    state: absent
+  changed_when: false

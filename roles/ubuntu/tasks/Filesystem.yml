@@ -1,0 +1,231 @@
+- name: Filesystem - Get list of /lib files - V-270696
+  command: find /lib -perm -022 -type f
+  register: lib_files
+  changed_when: false
+  when: manage_ubuntu_V_270696
+
+- name: Filesystem - Set /lib permissions - V-270696
+  file:
+    mode: 0755
+    dest: '{{ item }}'
+  loop: '{{ lib_files.stdout_lines }}'
+  when: manage_ubuntu_V_270696
+
+- name: Filesystem - Get list of /lib64 files - V-270696
+  command: find /lib64 -perm /022
+  register: lib64_files
+  changed_when: false
+  when: manage_ubuntu_V_270696
+
+- name: Filesystem - Set /lib64 permissions - V-270696
+  file:
+    mode: 0755
+    dest: '{{ item }}'
+  loop: '{{ lib64_files.stdout_lines }}'
+  when: manage_ubuntu_V_270696
+
+- name: Filesystem - Get list of /usr/lib files - V-270696
+  command: find /usr/lib -perm /022 -type f
+  register: usr_lib_files
+  changed_when: false
+  when: manage_ubuntu_V_270696
+
+- name: Filesystem - Set /usr/lib permissions - V-270696
+  file:
+    mode: 0755
+    dest: '{{ item }}'
+  loop: '{{ usr_lib_files.stdout_lines }}'
+  when: manage_ubuntu_V_270696
+
+- name: Filesystem - /lib directory permissions - V-270696
+  file:
+    path: /lib
+    mode: 0755
+  when: manage_ubuntu_V_270696
+
+- name: Filesystem - /lib64 directory permissions - V-270696
+  file:
+    path: /lib64
+    mode: 0755
+  when: manage_ubuntu_V_270696
+
+- name: Filesystem - /usr/lib directory permissions - V-270696
+  file:
+    path: /usr/lib
+    mode: 0755
+  when: manage_ubuntu_V_270696
+
+- name: Filesystem - Set library files to be owned by root - V-270697, V-270699
+  file:
+    path: '{{ item.path }}'
+    owner: root
+    group: root
+  with_items:
+    - { path: '/lib' }
+    - { path: '/usr/lib' }
+    - { path: '/lib64' }
+  when: (manage_ubuntu_V_270697) and (manage_ubuntu_V_270699)
+
+- name: Filesystem - Set library directories to be owned by root - V-270698, V-270700
+  file:
+    path: '{{ item.path }}'
+    recurse: yes
+    state: directory
+    owner: root
+    group: root
+  with_items:
+    - { path: '/lib' }
+    - { path: '/usr/lib' }
+    - { path: '/lib64' }
+  when: (manage_ubuntu_V_270698) and (manage_ubuntu_V_270700)
+
+- name: Filesystem - Set library files to be group owned by root - V-270701
+  file:
+    path: '{{ item.path }}'
+    mode: 0755
+    owner: root
+  with_items:
+    - { path: '/bin' }
+    - { path: '/sbin' }
+    - { path: '/usr/bin' }
+    - { path: '/usr/sbin' }
+    - { path: '/usr/local/bin' }
+    - { path: '/usr/local/sbin' }
+  when: manage_ubuntu_V_270701
+
+- name: Filesystem - Set library directories to be group owned by root - V-270702, V-270703
+  file:
+    path: '{{ item.path }}'
+    recurse: yes
+    state: directory
+    owner: root
+    group: root
+  with_items:
+    - { path: '/bin' }
+    - { path: '/sbin' }
+    - { path: '/usr/bin' }
+    - { path: '/usr/sbin' }
+    - { path: '/usr/local/bin' }
+    - { path: '/usr/local/sbin' }
+  when: (manage_ubuntu_V_270702) and (manage_ubuntu_V_270703)
+
+- name: Filesystem - Set the default filesystem permissions - V-270716
+  lineinfile:
+    path: /etc/login.defs
+    line: 'UMASK {{ UMASK }}'
+    regexp: '(?i)^UMASK\s'
+  when: manage_ubuntu_V_270716
+
+- name: Filesystem - Verify default filesystem permissions - V-270716
+  replace:
+    path: /etc/login.defs
+    regexp: '(?i)^UMASK\s'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_270716
+
+- name: Filesystem - Get list of world-writeable directories - V-270750
+  shell:  find / -type d -perm -002 ! -perm -1000 2>/dev/null | cat
+  register: world_writeable_directories
+  changed_when: false
+  when: manage_ubuntu_V_270750
+
+- name: Filesystem - Set sticky bit for world-writeable directories - V-270750
+  file:
+    mode: 1777
+    state: directory
+    dest: '{{ item }}'
+  loop: '{{ world_writeable_directories.stdout_lines }}'
+  when: manage_ubuntu_V_270750
+
+- name: Filesystem - Get list of /var/log files - V-270756
+  shell: find /var/log -perm /137 -type f
+  register: log_files
+  changed_when: false
+  when: manage_ubuntu_V_270756
+
+- name: Filesystem - Set /var/log permissions - V-270756
+  file:
+    mode: u-x,g-wx,o-rwx
+    dest: '{{ item }}'
+  loop: '{{ log_files.stdout_lines }}'
+  when: manage_ubuntu_V_270756
+
+- name: Filesystem - Override permissions for /var/log files - V-270756, V-270762, V-270763, V-270764
+  lineinfile:
+    path: '{{ item.path }}'
+    line: '{{ item.line }}'
+    regexp: '{{ item.regexp }}'
+  with_items:
+    - { path: '/usr/lib/tmpfiles.d/systemd.conf', line: 'd /var/log/private 0640 root root -', regexp: '(?i)^d\s+\/var\/log\/private', managed: 'manage_ubuntu_V_270756' }
+    - { path: '/usr/lib/tmpfiles.d/systemd.conf', line: 'z /var/log/journal/%m 2640 root systemd-journal - -', regexp: '(?i)^z\s+\/var\/log\/journal\/%m\s+', managed: 'manage_ubuntu_V_270763' }
+    - { path: '/usr/lib/tmpfiles.d/systemd.conf', line: 'z /run/log/journal 2640 root systemd-journal - -', regexp: '(?i)^z\s+\/run\/log\/journal\s+', managed: 'manage_ubuntu_V_270764' }
+    - { path: '/usr/lib/tmpfiles.d/systemd.conf', line: 'z /var/log/journal 2640 root systemd-journal - -', regexp: '(?i)^z\s+\/var\/log\/journal\s+', managed: 'manage_ubuntu_V_270764' }
+    - { path: '/usr/lib/tmpfiles.d/systemd.conf', line: 'Z /run/log/journal/%m ~2640 root systemd-journal - -', regexp: '(?i)^Z\s+\/run\/log\/journal\/%m\s+', managed: 'manage_ubuntu_V_270762' }
+    - { path: '/usr/lib/tmpfiles.d/systemd.conf', line: 'z /var/log/journal/%m/system.journal 0640 root systemd-journal - -', regexp: '(?i)^z\s+\/var\/log\/journal\/%m\/system\.journal\s+', managed: 'manage_ubuntu_V_270762' }
+    - { path: '/usr/lib/tmpfiles.d/var.conf', line: 'f /var/log/wtmp 0640 root utmp -', regexp: '(?i)^f\s+\/var\/log\/wtmp', managed: 'manage_ubuntu_V_270756' }
+    - { path: '/usr/lib/tmpfiles.d/var.conf', line: 'f /var/log/btmp 0640 root utmp -', regexp: '(?i)^f\s+\/var\/log\/btmp', managed: 'manage_ubuntu_V_270756' }
+    - { path: '/usr/lib/tmpfiles.d/var.conf', line: 'f /var/log/lastlog 0640 root utmp -', regexp: '(?i)^f\s+\/var\/log\/lastlog', managed: 'manage_ubuntu_V_270756' }
+  when: item.managed  
+  notify: Reload journal
+
+- name: Filesystem - Verify overwrite permissions for /var/log files - V-270756, V-270762, V-270763, V-270764
+  replace:
+    path: '{{ item.path }}'
+    regexp: '{{ item.regexp }}'
+    replace: ''
+  with_items:
+    - { path: '/usr/lib/tmpfiles.d/systemd.conf', regexp: '(?i)^d\s+\/var\/log\/private', managed: 'manage_ubuntu_V_270756' }
+    - { path: '/usr/lib/tmpfiles.d/systemd.conf', regexp: '(?i)^z\s+\/var\/log\/journal\/%m\s+', managed: 'manage_ubuntu_V_270763' }
+    - { path: '/usr/lib/tmpfiles.d/systemd.conf', regexp: '(?i)^z\s+\/run\/log\/journal\s+', managed: 'manage_ubuntu_V_270764' }
+    - { path: '/usr/lib/tmpfiles.d/systemd.conf', regexp: '(?i)^z\s+\/var\/log\/journal\s+', managed: 'manage_ubuntu_V_270764' }
+    - { path: '/usr/lib/tmpfiles.d/systemd.conf', regexp: '(?i)^Z\s+\/run\/log\/journal\/%m\s+', managed: 'manage_ubuntu_V_270762' }
+    - { path: '/usr/lib/tmpfiles.d/systemd.conf', regexp: '(?i)^z\s+\/var\/log\/journal\/%m\/system\.journal\s+', managed: 'manage_ubuntu_V_270762' }
+    - { path: '/usr/lib/tmpfiles.d/var.conf', regexp: '(?i)^f\s+\/var\/log\/wtmp', managed: 'manage_ubuntu_V_270756' }
+    - { path: '/usr/lib/tmpfiles.d/var.conf', regexp: '(?i)^f\s+\/var\/log\/btmp', managed: 'manage_ubuntu_V_270756' }
+    - { path: '/usr/lib/tmpfiles.d/var.conf', regexp: '(?i)^f\s+\/var\/log\/lastlog', managed: 'manage_ubuntu_V_270756' }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed 
+  notify: Reload journal
+
+- name: Filesystem - Set journalctl permissions to 740 - V-270758
+  file:
+    path: /usr/bin/journalctl
+    mode: 0740
+  when: manage_ubuntu_V_270758
+
+
+- name: Filesystem - Set /usr/bin/journalctl owner to root - V-270759
+  file:
+    path: /usr/bin/journalctl
+    owner: root
+  when: manage_ubuntu_V_270759
+
+- name: Filesystem - Set /usr/bin/journalctl owner to root - V-270760
+  file:
+    path: /usr/bin/journalctl
+    group: root
+  when: manage_ubuntu_V_270760
+
+- name: Filesystem - Configure /var/log permissions - V-270765, V-270766, V-270767
+  file:
+    path: /var/log
+    owner: root
+    group: syslog
+    mode: 0755
+  when: (manage_ubuntu_V_270765) and (manage_ubuntu_V_270766) and (manage_ubuntu_V_270767)
+  notify: /var/log permissions
+
+- name: Filesystem - Configure /var/log/syslog permissions - V-270768, V-270769, V-270770
+  file:
+    path: /var/log/syslog
+    owner: syslog
+    group: adm
+    mode: 0640
+  when: (manage_ubuntu_V_270768) and (manage_ubuntu_V_270769) and (manage_ubuntu_V_270770)

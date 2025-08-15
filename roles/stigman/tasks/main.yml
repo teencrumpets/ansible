@@ -1,0 +1,77 @@
+- import_role:
+    name: 'docker_host'
+  when: run_docker
+
+- name: Create Stigman compose directory
+  file:
+    state: directory
+    path: '{{ compose_path }}'
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Create nfs mount directory for binary data
+  file:
+    state: directory
+    path: '{{ nec_svr_ops_dir_stigman }}'
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Create backup mount directory
+  file:
+    state: directory
+    path: '{{ backup_mount_dir_stigman }}'
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Deploy stigman
+  import_tasks: deploy.yml
+  when: mode in ["restore", "deploy"]
+
+- name: Backup Stigman
+  import_tasks: backup.yml
+  when: mode in ["backup", "update"]
+
+- name: Create compose file
+  template:
+    src: compose.yaml.j2
+    dest: '{{ compose_path }}/compose.yaml'
+    owner: ypgansible
+    group: docker
+    mode: 0550
+  when: mode in ["update"]
+
+- name: Update stigman image
+  command:
+    cmd: 'docker compose pull'
+    chdir: '{{ compose_path }}'
+  changed_when: false
+  when: mode in ["update"]
+
+- name: Stop stigman service
+  command:
+    cmd: "docker compose down"
+    chdir: '{{ compose_path }}'
+  changed_when: false
+  when: mode in ["bounce"]
+
+- name: Start stigman service
+  command:
+    cmd: 'docker compose up -d'
+    chdir: '{{ compose_path }}'
+  changed_when: false
+  when: mode in ["backup", "deploy", "update", "restore", "bounce"]
+
+- name: Cleaning up nfs_share mounts
+  mount:
+    path: '{{ nec_svr_ops_dir_stigman }}'
+    state: absent
+  changed_when: false
+
+- name: Cleaning up backup mounts
+  mount:
+    path: '{{ backup_mount_dir_stigman }}'
+    state: absent
+  changed_when: false

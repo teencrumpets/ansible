@@ -1,0 +1,32 @@
+- name: Mounting backup share
+  mount:
+    src: "{{ backup_share }}"
+    path: '{{ backup_mount_dir_minio }}'
+    state: mounted
+    fstype: nfs
+  changed_when: false
+  
+- name: Create Minio service
+  command:
+    cmd: 'docker compose up -d --no-start'
+    chdir: "{{ minio_compose_path }}"
+  changed_when: false
+
+- name: Get volume backup list Minio
+  find:
+    paths: "{{ minio_restore_dir }}"
+    file_type: file
+  register: backups
+  when: mode in ["restore"]
+
+- name: Get newest volume backup Minio
+  set_fact:
+    newest: "{{ backups.files | sort(attribute='mtime') | last }}"
+  when: mode in ["restore"]
+
+- name: Restoring volume Minio
+  command:
+    cmd: "tar xvpf {{ newest.path }}"
+    chdir: "{{ minio_data_volume }}"
+  changed_when: false
+  when: mode in ["restore"]

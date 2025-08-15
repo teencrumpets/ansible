@@ -1,0 +1,195 @@
+- name: audit playbook - Configuring /etc/audit/rules.d/audit.rules - V-230386, V-230402, V-230403, V-230404, V-230405, V-230406, V-230407, V-230408, V-230410, V-230411, V-230412, V-230413, V-230418, V-230419, V-230421. V-230422, V-230423, V-230424, V-230425, V-230426, V-230427, V-230428, V-230429, V-230430, V-230431, V-230432, V-230433, V-230434, V-230435, V-230436, V-230437, V-230438, V-230439, V-230444, V-230446, V-230447, V-230448, V-230449, V-230455, V230456, V-230462, V-230463, V-230464, V-230465, V-230466, V-230467
+  lineinfile:
+    path: /etc/audit/rules.d/audit.rules
+    line: "{{ item.line }}"
+    state: present
+    create: yes
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { line: '-a always,exit -F arch=b32 -S execve -C uid!=euid -F euid=0 -k execpriv', regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+execve\s+-C\s+uid!=euid\s+-F\s+euid=0\s+-k\s+execpriv', managed: "{{ manage_rhel8_v_230386 }}" }
+    - { line: '-a always,exit -F arch=b64 -S execve -C uid!=euid -F euid=0 -k execpriv', regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+execve\s+-C\s+uid!=euid\s+-F\s+euid=0\s+-k\s+execpriv', managed: "{{ manage_rhel8_v_230386 }}" }
+    - { line: '-a always,exit -F arch=b32 -S execve -C gid!=egid -F egid=0 -k execpriv', regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+execve\s+-C\s+gid!=egid\s+-F\s+egid=0\s+-k\s+execpriv', managed: "{{ manage_rhel8_v_230386 }}" }
+    - { line: '-a always,exit -F arch=b64 -S execve -C gid!=egid -F egid=0 -k execpriv', regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+execve\s+-C\s+gid!=egid\s+-F\s+egid=0\s+-k\s+execpriv', managed: "{{ manage_rhel8_v_230386 }}" }
+    - { line: '-e 2', regexp: '^(?i)-e\s+2', managed: "{{ manage_rhel8_v_230402 }}" }
+    - { line: '--loginuid-immutable', regexp: '^(?i)--loginuid-immutable', managed: "{{ manage_rhel8_v_230403 }}" }
+    - { line: '-w /etc/shadow -p wa -k identity', regexp: '^(?i)-w\s+/etc/shadow\s+-p\s+wa\s+-k\s+identity', managed: "{{ manage_rhel8_v_230404 }}" }
+    - { line: '-w /etc/security/opasswd -p wa -k identity', regexp: '^(?i)-w\s+/etc/security/opasswd\s+-p\s+wa\s+-k\s+identity', managed: "{{ manage_rhel8_v_230405 }}" }
+    - { line: '-w /etc/passwd -p wa -k identity', regexp: '^(?i)-w\s+/etc/passwd\s+-p\s+wa\s+-k\s+identity', managed: "{{ manage_rhel8_v_230406 }}" }
+    - { line: '-w /etc/gshadow -p wa -k identity', regexp: '^(?i)-w\s+/etc/gshadow\s+-p\s+wa\s+-k\s+identity', managed: "{{ manage_rhel8_v_230407 }}" }
+    - { line: '-w /etc/group -p wa -k identity', regexp: '^(?i)-w\s+/etc/group\s+-p\s+wa\s+-k\s+identity', managed: "{{ manage_rhel8_v_230408 }}" }
+    - { line: '-w /etc/sudoers -p wa -k identity', regexp: '^(?i)-w\s+/etc/sudoers\s+-p\s+wa\s+-k\s+identity', managed: "{{ manage_rhel8_v_230409 }}" }
+    - { line: '-w /etc/sudoers.d/ -p wa -k identity', regexp: '^(?i)-w\s+/etc/sudoers.d/\s+-p\s+wa\s+-k\s+identity', managed: "{{ manage_rhel8_v_230410 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/su -F perm=x -F auid>=1000 -F auid!=unset -k privileged-priv_change', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/su\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-priv_change', managed: "{{ manage_rhel8_v_230412 }}" }
+    - { line: '-a always,exit -F arch=b32 -S setxattr,fsetxattr,lsetxattr,removexattr,fremovexattr,lremovexattr -F auid>=1000 -F auid!=unset -k perm_mod', regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+setxattr,fsetxattr,lsetxattr,removexattr,fremovexattr,lremovexattr\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_mod', managed: "{{ manage_rhel8_v_230413 }}" }
+    - { line: '-a always,exit -F arch=b64 -S setxattr,fsetxattr,lsetxattr,removexattr,fremovexattr,lremovexattr -F auid>=1000 -F auid!=unset -k perm_mod', regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+setxattr,fsetxattr,lsetxattr,removexattr,fremovexattr,lremovexattr\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_mod', managed: "{{ manage_rhel8_v_230413 }}" }
+    - { line: '-a always,exit -F arch=b32 -S setxattr,fsetxattr,lsetxattr,removexattr,fremovexattr,lremovexattr -F auid=0 -k perm_mod', regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+setxattr,fsetxattr,lsetxattr,removexattr,fremovexattr,lremovexattr\s+-F\s+auid=0\s+-k\s+perm_mod', managed: "{{ manage_rhel8_v_230413 }}" }
+    - { line: '-a always,exit -F arch=b64 -S setxattr,fsetxattr,lsetxattr,removexattr,fremovexattr,lremovexattr -F auid=0 -k perm_mod', regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+setxattr,fsetxattr,lsetxattr,removexattr,fremovexattr,lremovexattr\s+-F\s+auid=0\s+-k\s+perm_mod', managed: "{{ manage_rhel8_v_230413 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/chage -F perm=x -F auid>=1000 -F auid!=unset -k privileged-chage', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/chage\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-chage', managed: "{{ manage_rhel8_v_230418 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/chcon -F perm=x -F auid>=1000 -F auid!=unset -k perm_mod', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/chcon\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_mod', managed: "{{ manage_rhel8_v_230419 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/ssh-agent -F perm=x -F auid>=1000 -F auid!=unset -k privileged-ssh', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/ssh-agent\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-ssh', managed: "{{ manage_rhel8_v_230421 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/passwd -F perm=x -F auid>=1000 -F auid!=unset -k privileged-passwd', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/passwd\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-passwd', managed: "{{ manage_rhel8_v_230422 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/mount -F perm=x -F auid>=1000 -F auid!=unset -k privileged-mount', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/mount\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-mount', managed: "{{ manage_rhel8_v_230423 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/umount -F perm=x -F auid>=1000 -F auid!=unset -k privileged-mount', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/umount\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-mount', managed: "{{ manage_rhel8_v_230424 }}" }
+    - { line: '-a always,exit -F arch=b32 -S mount -F auid>=1000 -F auid!=unset -k privileged-mount', regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+mount\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-mount', managed: "{{ manage_rhel8_v_230425 }}" }
+    - { line: '-a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=unset -k privileged-mount', regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+mount\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-mount', managed: "{{ manage_rhel8_v_230425 }}" }
+    - { line: '-a always,exit -F path=/usr/sbin/unix_update -F perm=x -F auid>=1000 -F auid!=unset -k privileged-unix-update', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/sbin/unix_update\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-unix-update', managed: "{{ manage_rhel8_v_230426 }}" }
+    - { line: '-a always,exit -F path=/usr/sbin/postdrop -F perm=x -F auid>=1000 -F auid!=unset -k privileged-unix-update', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/sbin/postdrop\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-unix-update', managed: "{{ manage_rhel8_v_230427 }}" }
+    - { line: '-a always,exit -F path=/usr/sbin/postqueue -F perm=x -F auid>=1000 -F auid!=unset -k privileged-unix-update', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/sbin/postqueue\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-unix-update', managed: "{{ manage_rhel8_v_230428 }}" }
+    - { line: '-a always,exit -F path=/usr/sbin/semanage -F perm=x -F auid>=1000 -F auid!=unset -k privileged-unix-update', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/sbin/semanage\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-unix-update', managed: "{{ manage_rhel8_v_230429 }}" }
+    - { line: '-a always,exit -F path=/usr/sbin/setfiles -F perm=x -F auid>=1000 -F auid!=unset -k privileged-unix-update', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/sbin/setfiles\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-unix-update', managed: "{{ manage_rhel8_v_230430 }}" }
+    - { line: '-a always,exit -F path=/usr/sbin/userhelper -F perm=x -F auid>=1000 -F auid!=unset -k privileged-unix-update', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/sbin/userhelper\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-unix-update', managed: "{{ manage_rhel8_v_230431 }}" }
+    - { line: '-a always,exit -F path=/usr/sbin/setsebool -F perm=x -F auid>=1000 -F auid!=unset -k privileged-unix-update', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/sbin/setsebool\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-unix-update', managed: "{{ manage_rhel8_v_230432 }}" }
+    - { line: '-a always,exit -F path=/usr/sbin/unix_chkpwd -F perm=x -F auid>=1000 -F auid!=unset -k privileged-unix-update', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/sbin/unix_chkpwd\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-unix-update', managed: "{{ manage_rhel8_v_230433 }}" }
+    - { line: '-a always,exit -F path=/usr/libexec/openssh/ssh-keysign -F perm=x -F auid>=1000 -F auid!=unset -k privileged-ssh', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/libexec/openssh/ssh-keysign\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-ssh', managed: "{{ manage_rhel8_v_230434 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/setfacl -F perm=x -F auid>=1000 -F auid!=unset -k perm_mod', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/setfacl\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_mod', managed: "{{ manage_rhel8_v_230435 }}" }
+    - { line: '-a always,exit -F path=/usr/sbin/pam_timestamp_check -F perm=x -F auid>=1000 -F auid!=unset -k privileged-pam_timestamp_check', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/sbin/pam_timestamp_check\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-pam_timestamp_check', managed: "{{ manage_rhel8_v_230436 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/newgrp -F perm=x -F auid>=1000 -F auid!=unset -k priv_cmd', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/newgrp\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+priv_cmd', managed: "{{ manage_rhel8_v_230437 }}" }
+    - { line: '-a always,exit -F arch=b32 -S init_module,finit_module -F auid>=1000 -F auid!=unset -k module_chng', regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+init_module,finit_module\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+module_chng', managed: "{{ manage_rhel8_v_230438 }}" }
+    - { line: '-a always,exit -F arch=b64 -S init_module,finit_module -F auid>=1000 -F auid!=unset -k module_chng', regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+init_module,finit_module\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+module_chng', managed: "{{ manage_rhel8_v_230438 }}" }
+    - { line: '-a always,exit -F arch=b32 -S rename,unlink,rmdir,renameat,unlinkat -F auid>=1000 -F auid!=unset -k delete', regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+rename,unlink,rmdir,renameat,unlinkat\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+delete', managed: "{{ manage_rhel8_v_230439 }}" }
+    - { line: '-a always,exit -F arch=b64 -S rename,unlink,rmdir,renameat,unlinkat -F auid>=1000 -F auid!=unset -k delete', regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+rename,unlink,rmdir,renameat,unlinkat\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+delete', managed: "{{ manage_rhel8_v_230439 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/gpasswd -F perm=x -F auid>=1000 -F auid!=unset -k privileged-gpasswd', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/gpasswd\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-gpasswd', managed: "{{ manage_rhel8_v_230444 }}" }
+    - { line: '-a always,exit -F arch=b32 -S delete_module -F auid>=1000 -F auid!=unset -k module_chng', regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+delete_module\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+module_chng', managed: "{{ manage_rhel8_v_230446 }}" }
+    - { line: '-a always,exit -F arch=b64 -S delete_module -F auid>=1000 -F auid!=unset -k module_chng', regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+delete_module\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+module_chng', managed: "{{ manage_rhel8_v_230446 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/crontab -F perm=x -F auid>=1000 -F auid!=unset -k privileged-crontab', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/crontab\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-crontab', managed: "{{ manage_rhel8_v_230447 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/chsh -F perm=x -F auid>=1000 -F auid!=unset -k priv_cmd', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/chsh\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+priv_cmd', managed: "{{ manage_rhel8_v_230448 }}" }
+    - { line: '-a always,exit -F arch=b32 -S truncate,ftruncate,creat,open,openat,open_by_handle_at -F exit=-EPERM -F auid>=1000 -F auid!=unset -k perm_access', regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+truncate,ftruncate,creat,open,openat,open_by_handle_at\s+-F\s+exit=-EPERM\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_access', managed: "{{ manage_rhel8_v_230449 }}" }
+    - { line: '-a always,exit -F arch=b64 -S truncate,ftruncate,creat,open,openat,open_by_handle_at -F exit=-EPERM -F auid>=1000 -F auid!=unset -k perm_access', regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+truncate,ftruncate,creat,open,openat,open_by_handle_at\s+-F\s+exit=-EPERM\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_access', managed: "{{ manage_rhel8_v_230449 }}" }
+    - { line: '-a always,exit -F arch=b32 -S truncate,ftruncate,creat,open,openat,open_by_handle_at -F exit=-EACCES -F auid>=1000 -F auid!=unset -k perm_access', regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+truncate,ftruncate,creat,open,openat,open_by_handle_at\s+-F\s+exit=-EACCES\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_access', managed: "{{ manage_rhel8_v_230449 }}" }
+    - { line: '-a always,exit -F arch=b64 -S truncate,ftruncate,creat,open,openat,open_by_handle_at -F exit=-EACCES -F auid>=1000 -F auid!=unset -k perm_access', regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+truncate,ftruncate,creat,open,openat,open_by_handle_at\s+-F\s+exit=-EACCES\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_access', managed: "{{ manage_rhel8_v_230449 }}" }
+    - { line: '-a always,exit -F arch=b32 -S chown,fchown,fchownat,lchown -F auid>=1000 -F auid!=unset -k perm_mod', regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+chown,fchown,fchownat,lchown\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_mod', managed: "{{ manage_rhel8_v_230455 }}" }
+    - { line: '-a always,exit -F arch=b64 -S chown,fchown,fchownat,lchown -F auid>=1000 -F auid!=unset -k perm_mod', regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+chown,fchown,fchownat,lchown\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_mod', managed: "{{ manage_rhel8_v_230455 }}" }
+    - { line: '-a always,exit -F arch=b32 -S chmod,fchmod,fchmodat -F auid>=1000 -F auid!=unset -k perm_mod', regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+chmod,fchmod,fchmodat\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_mod', managed: "{{ manage_rhel8_v_230456 }}" }
+    - { line: '-a always,exit -F arch=b64 -S chmod,fchmod,fchmodat -F auid>=1000 -F auid!=unset -k perm_mod', regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+chmod,fchmod,fchmodat\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_mod', managed: "{{ manage_rhel8_v_230456 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/sudo -F perm=x -F auid>=1000 -F auid!=unset -k priv_cmd', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/sudo\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+priv_cmd', managed: "{{ manage_rhel8_v_230462 }}" }
+    - { line: '-a always,exit -F path=/usr/sbin/usermod -F perm=x -F auid>=1000 -F auid!=unset -k privileged-usermod', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/sbin/usermod\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-usermod', managed: "{{ manage_rhel8_v_230463 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/chacl -F perm=x -F auid>=1000 -F auid!=unset -k perm_mod', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/chacl\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_mod', managed: "{{ manage_rhel8_v_230464 }}" }
+    - { line: '-a always,exit -F path=/usr/bin/kmod -F perm=x -F auid>=1000 -F auid!=unset -k modules', regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/kmod\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+modules', managed: "{{ manage_rhel8_v_230465 }}" }
+    - { line: '-w /var/log/faillock -p wa -k logins', regexp: '^(?i)-w\s+/var/log/faillock\s+-p\s+wa\s+-k\s+logins', managed: "{{ manage_rhel8_v_230466 }}" }
+    - { line: '-w /var/log/lastlog -p wa -k logins', regexp: '^(?i)-w\s+/var/log/lastlog\s+-p\s+wa\s+-k\s+logins', managed: "{{ manage_rhel8_v_230467 }}" }
+  notify: restart_audit
+  when: item.managed
+
+- name: audit playbook - verify /etc/audit/rules.d/audit.rules - V-230386, V-230402, V-230403, V-230404, V-230405, V-230406, V-230407, V-230408, V-230410, V-230411, V-230412, V-230413, V-230418, V-230419, V-230421. V-230422, V-230423, V-230424, V-230425, V-230426, V-230427, V-230428, V-230429, V-230430, V-230431, V-230432, V-230433, V-230434, V-230435, V-230436, V-230437, V-230438, V-230439, V-230444, V-230446, V-230447, V-230448, V-230449, V-230455, V230456, V-230462, V-230463, V-230464, V-230465, V-230466, V-230467
+  replace:
+    path: /etc/audit/rules.d/audit.rules
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+execve\s+-C\s+uid!=euid\s+-F\s+euid=0\s+-k\s+execpriv', managed: "{{ manage_rhel8_v_230386 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+execve\s+-C\s+uid!=euid\s+-F\s+euid=0\s+-k\s+execpriv', managed: "{{ manage_rhel8_v_230386 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+execve\s+-C\s+gid!=egid\s+-F\s+egid=0\s+-k\s+execpriv', managed: "{{ manage_rhel8_v_230386 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+execve\s+-C\s+gid!=egid\s+-F\s+egid=0\s+-k\s+execpriv', managed: "{{ manage_rhel8_v_230386 }}" }
+    - { regexp: '^(?i)-e\s+2', managed: "{{ manage_rhel8_v_230402 }}" }
+    - { regexp: '^(?i)--loginuid-immutable', managed: "{{ manage_rhel8_v_230403 }}" }
+    - { regexp: '^(?i)-w\s+/etc/shadow\s+-p\s+wa\s+-k\s+identity', managed: "{{ manage_rhel8_v_230404 }}" }
+    - { regexp: '^(?i)-w\s+/etc/security/opasswd\s+-p\s+wa\s+-k\s+identity', managed: "{{ manage_rhel8_v_230405 }}" }
+    - { regexp: '^(?i)-w\s+/etc/passwd\s+-p\s+wa\s+-k\s+identity', managed: "{{ manage_rhel8_v_230406 }}" }
+    - { regexp: '^(?i)-w\s+/etc/gshadow\s+-p\s+wa\s+-k\s+identity', managed: "{{ manage_rhel8_v_230407 }}" }
+    - { regexp: '^(?i)-w\s+/etc/group\s+-p\s+wa\s+-k\s+identity', managed: "{{ manage_rhel8_v_230408 }}" }
+    - { regexp: '^(?i)-w\s+/etc/sudoers\s+-p\s+wa\s+-k\s+identity', managed: "{{ manage_rhel8_v_230409 }}" }
+    - { regexp: '^(?i)-w\s+/etc/sudoers.d/\s+-p\s+wa\s+-k\s+identity', managed: "{{ manage_rhel8_v_230410 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/su\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-priv_change', managed: "{{ manage_rhel8_v_230412 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+setxattr,fsetxattr,lsetxattr,removexattr,fremovexattr,lremovexattr\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_mod', managed: "{{ manage_rhel8_v_230413 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+setxattr,fsetxattr,lsetxattr,removexattr,fremovexattr,lremovexattr\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_mod', managed: "{{ manage_rhel8_v_230413 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+setxattr,fsetxattr,lsetxattr,removexattr,fremovexattr,lremovexattr\s+-F\s+auid=0\s+-k\s+perm_mod', managed: "{{ manage_rhel8_v_230413 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+setxattr,fsetxattr,lsetxattr,removexattr,fremovexattr,lremovexattr\s+-F\s+auid=0\s+-k\s+perm_mod', managed: "{{ manage_rhel8_v_230413 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/chage\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-chage', managed: "{{ manage_rhel8_v_230418 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/chcon\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_mod', managed: "{{ manage_rhel8_v_230419 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/ssh-agent\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-ssh', managed: "{{ manage_rhel8_v_230421 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/passwd\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-passwd', managed: "{{ manage_rhel8_v_230422 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/mount\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-mount', managed: "{{ manage_rhel8_v_230423 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/umount\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-mount', managed: "{{ manage_rhel8_v_230424 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+mount\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-mount', managed: "{{ manage_rhel8_v_230425 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+mount\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-mount', managed: "{{ manage_rhel8_v_230425 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/sbin/unix_update\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-unix-update', managed: "{{ manage_rhel8_v_230426 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/sbin/postdrop\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-unix-update', managed: "{{ manage_rhel8_v_230427 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/sbin/postqueue\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-unix-update', managed: "{{ manage_rhel8_v_230428 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/sbin/semanage\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-unix-update', managed: "{{ manage_rhel8_v_230429 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/sbin/setfiles\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-unix-update', managed: "{{ manage_rhel8_v_230430 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/sbin/userhelper\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-unix-update', managed: "{{ manage_rhel8_v_230431 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/sbin/setsebool\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-unix-update', managed: "{{ manage_rhel8_v_230432 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/sbin/unix_chkpwd\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-unix-update', managed: "{{ manage_rhel8_v_230433 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/libexec/openssh/ssh-keysign\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-ssh', managed: "{{ manage_rhel8_v_230434 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/setfacl\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_mod', managed: "{{ manage_rhel8_v_230435 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/sbin/pam_timestamp_check\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-pam_timestamp_check', managed: "{{ manage_rhel8_v_230436 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/newgrp\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+priv_cmd', managed: "{{ manage_rhel8_v_230437 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+init_module,finit_module\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+module_chng', managed: "{{ manage_rhel8_v_230438 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+init_module,finit_module\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+module_chng', managed: "{{ manage_rhel8_v_230438 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+rename,unlink,rmdir,renameat,unlinkat\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+delete', managed: "{{ manage_rhel8_v_230439 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+rename,unlink,rmdir,renameat,unlinkat\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+delete', managed: "{{ manage_rhel8_v_230439 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/gpasswd\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-gpasswd', managed: "{{ manage_rhel8_v_230444 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+delete_module\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+module_chng', managed: "{{ manage_rhel8_v_230446 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+delete_module\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+module_chng', managed: "{{ manage_rhel8_v_230446 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/crontab\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-crontab', managed: "{{ manage_rhel8_v_230447 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/chsh\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+priv_cmd', managed: "{{ manage_rhel8_v_230448 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+truncate,ftruncate,creat,open,openat,open_by_handle_at\s+-F\s+exit=-EPERM\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_access', managed: "{{ manage_rhel8_v_230449 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+truncate,ftruncate,creat,open,openat,open_by_handle_at\s+-F\s+exit=-EPERM\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_access', managed: "{{ manage_rhel8_v_230449 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+truncate,ftruncate,creat,open,openat,open_by_handle_at\s+-F\s+exit=-EACCES\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_access', managed: "{{ manage_rhel8_v_230449 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+truncate,ftruncate,creat,open,openat,open_by_handle_at\s+-F\s+exit=-EACCES\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_access', managed: "{{ manage_rhel8_v_230449 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+chown,fchown,fchownat,lchown\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_mod', managed: "{{ manage_rhel8_v_230455 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+chown,fchown,fchownat,lchown\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_mod', managed: "{{ manage_rhel8_v_230455 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b32\s+-S\s+chmod,fchmod,fchmodat\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_mod', managed: "{{ manage_rhel8_v_230456 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+arch=b64\s+-S\s+chmod,fchmod,fchmodat\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_mod', managed: "{{ manage_rhel8_v_230456 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/sudo\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+priv_cmd', managed: "{{ manage_rhel8_v_230462 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/sbin/usermod\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+privileged-usermod', managed: "{{ manage_rhel8_v_230463 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/chacl\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+perm_mod', managed: "{{ manage_rhel8_v_230464 }}" }
+    - { regexp: '^(?i)-a\s+always,exit\s+-F\s+path=/usr/bin/kmod\s+-F\s+perm=x\s+-F\s+auid>=1000\s+-F\s+auid!=unset\s+-k\s+modules', managed: "{{ manage_rhel8_v_230465 }}" }
+    - { regexp: '^(?i)-w\s+/var/log/faillock\s+-p\s+wa\s+-k\s+logins', managed: "{{ manage_rhel8_v_230466 }}" }
+    - { regexp: '^(?i)-w\s+/var/log/lastlog\s+-p\s+wa\s+-k\s+logins', managed: "{{ manage_rhel8_v_230467 }}" }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed
+
+- name: audit playbook - configure /etc/audit/auditd.conf - V-230390, V-230392, V-230394, V-230483, V-244543
+  lineinfile:
+    path: '/etc/audit/auditd.conf'
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items: 
+    - { line: 'disk_error_action = SYSLOG', regexp: '^(?i)disk_error_action\s+=', managed: "{{ manage_rhel8_v_230390 }}" }
+    - { line: 'disk_full_action = SYSLOG', regexp: '^(?i)disk_full_action\s+=', managed: "{{ manage_rhel8_v_230392 }}" }
+    - { line: 'name_format = hostname', regexp: '^(?i)name_format\s+=', managed: "{{ manage_rhel8_v_230394 }}" }
+    - { line: 'space_left = 25%', regexp: '^(?i)space_left\s+=', managed: "{{ manage_rhel8_v_230483 }}" }
+    - { line: 'space_left_action = email', regexp: '^(?i)space_left_action\s+=', managed: "{{ manage_rhel8_v_244543 }}" }
+  when: item.managed
+  notify: restart_audit
+
+- name: audit playbook - verify /etc/audit/auditd.conf configuration - V-230390, V-230392, V-230394, V-230483, V-244543
+  replace:
+    path: /etc/audit/auditd.conf
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '^(?i)disk_error_action\s+=', managed: "{{ manage_rhel8_v_230390 }}" }
+    - { regexp: '^(?i)disk_full_action\s+=', managed: "{{ manage_rhel8_v_230392 }}" }
+    - { regexp: '^(?i)name_format\s+=', managed: "{{ manage_rhel8_v_230394 }}" }
+    - { regexp: '^(?i)space_left\s+=', managed: "{{ manage_rhel8_v_230483 }}" }
+    - { regexp: '^(?i)space_left_action\s+=', managed: "{{ manage_rhel8_v_244543 }}" }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed
+
+- name: audit playbook - Configure /etc/usbguard/usbguard-daemon.conf - V-230470
+  lineinfile: 
+    path: /etc/usbguard/usbguard-daemon.conf
+    line: "AuditBackend=LinuxAudit"
+    state: present
+    regexp: '^(?i)AuditBackend='
+  when: manage_rhel8_v_230470
+
+- name: audit playbook - Verify /etc/usbguard/usbguard-daemon.conf - V-230470
+  replace:
+    path: /etc/usbguard/usbguard-daemon.conf
+    regexp: '^(?i)AuditBackend='
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_rhel8_v_230470

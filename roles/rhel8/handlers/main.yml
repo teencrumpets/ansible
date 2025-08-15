@@ -1,0 +1,53 @@
+- name: update_grub
+  command: grub2-mkconfig -o /boot/efi/EFI/redhat/grub.cfg
+
+- name: reload_sshd
+  service: 
+    name: sshd
+    state: reloaded
+
+- name: reload_firewalld
+  service: 
+    name: firewalld
+    state: reloaded
+
+- name: restart_audit
+  command: service auditd restart
+
+- name: load_sysctl
+  command: sysctl --system
+
+- name: restart_rsyslog
+  service:
+    name: rsyslog
+    state: restarted
+
+- name: restart_logind
+  service:
+    name: systemd-logind
+    state: restarted
+
+- name: reload systemctl
+  systemd:
+    daemon_reload: true
+
+- name: grub_poison
+  command: grubby --update-kernel=ALL --args="page_poison=1"
+
+- name: grub_vsyscall
+  command: grubby --update-kernel=ALL --args="vsyscall=none"
+
+- name: grub_slub
+  command: grubby --update-kernel=ALL --args="slub_debug=P"
+
+- name: grub_audit
+  command: grubby --update-kernel=ALL --args="audit=1"
+
+- name: grub_backlog
+  command: grubby --update-kernel=ALL --args="audit_backlog_limit=8192"
+
+- name: grub_pti
+  command: grubby --update-kernel=ALL --args="pti=on"
+
+- name: fcontext
+  command: sudo restorecon -R -v /var/log/faillock

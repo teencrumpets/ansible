@@ -1,0 +1,33 @@
+- name: fstab playbook - Configure /etc/fstab - V-230299, V-230511, V-230514, V-230517, V-230520, V-244530, V-230300
+  replace: 
+    path: /etc/fstab
+    replace: "{{ item.replace }}"
+    regexp: "{{ item.regexp }}"
+  with_items: 
+    - { replace: '\1,nosuid \3', regexp: '^(?i)(.*\/boot\/efi.*vfat.*umask=0077,shortname=winnt)((?!,nosuid\s).*)(0\s2)', managed: "{{ manage_rhel8_v_244530 }}" }
+    - { replace: '\1,nosuid,noexec \3', regexp: '^(?i)(.*\/home.*xfs.*defaults)((?!,nosuid,noexec).*)(0\s0)', managed: "{{ manage_rhel8_v_230299 }}" }
+    - { replace: '\1,nodev,nosuid,noexec \3', regexp: '^(?i)(.*\/tmp.*xfs.*defaults)((?!,nodev,nosuid,noexec).*)(0\s0)', managed: "{{ manage_rhel8_v_230511 }}" }
+    - { replace: '\1,nodev,nosuid,noexec \3', regexp: '^(?i)(.*\/var\/log.*xfs.*defaults)((?!,nodev,nosuid,noexec).*)(0\s0)', managed: "{{ manage_rhel8_v_230514 }}" }
+    - { replace: '\1,nodev,nosuid,noexec \3', regexp: '^(?i)(.*\/var\/log\/audit.*xfs.*defaults)((?!,nodev,nosuid,noexec\s).*)(0\s0)', managed: "{{ manage_rhel8_v_230517 }}" }
+    - { replace: '\1,nodev,nosuid,noexec \3', regexp: '^(?i)(.*\/var\/tmp.*xfs.*defaults)((?!,nodev,nosuid,noexec\s).*)(0\s0)', managed: "{{ manage_rhel8_v_230520 }}" }
+    - { replace: '\1,nosuid \3', regexp: '^(?i)(.*\/boot.*xfs.*defaults)((?!,nosuid\s).*)(0\s0)', managed: "{{ manage_rhel8_v_230300 }}" }
+  when: item.managed
+
+- name: fstab playbook - Mount /dev/shm - V-230508, V-230509
+  lineinfile:
+    path: /etc/fstab
+    line: 'tmpfs /dev/shm tmpfs defaults,nodev,nosuid,noexec 0 0'
+    state: present
+    regexp: '^(?i)tmpfs\s\/dev\/shm\stmpfs\sdefaults,nodev,nosuid,noexec\s0\s0'
+  when: manage_rhel8_v_230508
+
+- name: fstab playbook - Verify /dev/shm mount - V-230508, V-230509
+  replace:
+    path: /etc/fstab
+    regexp: '^(?i)tmpfs\s\/dev\/shm\stmpfs\sdefaults,nodev,nosuid,noexec\s0\s0'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_rhel8_v_230508

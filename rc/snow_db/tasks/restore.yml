@@ -1,0 +1,34 @@
+- name: snow backup mount point directory
+  file:
+    state: directory
+    path: "{{ backup_mount_snow }}"
+
+- name: Mount NFS backup share
+  mount:
+    src: "{{ nfs_share }}"
+    path: '{{ backup_mount_snow }}'
+    state: mounted
+    fstype: nfs
+  changed_when: false
+
+- name: snow backup directory
+  file:
+    state: directory
+    path: "{{ snow_backup_dir }}"
+
+- name: Get db backup list
+  find:
+    path: "{{ snow_backup_dir }}"
+    file_type: file
+  register: backups
+
+- name: Get newest db backup
+  set_fact:
+    newest: "{{ backups.files | sort(attribute='mtime') | last }}"
+
+- name: Print a variable
+  debug:
+    var: newest.path
+
+- name: import DB from backup
+  shell: gunzip < "{{ newest.path }}" | mysql -u root -p"{{ mariadb_pw }}" --default-character-set=utf8 "{{ snow_db }}"

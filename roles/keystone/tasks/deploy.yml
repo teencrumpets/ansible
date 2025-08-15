@@ -1,0 +1,280 @@
+- name: Mounting backup share
+  mount:
+    src: "{{ backup_share }}"
+    path: '{{ backup_mount_dir_keystone }}'
+    state: mounted
+    fstype: nfs
+  changed_when: false
+  when: keystone_mode in ["restore"]
+
+- name: Partition application storage device
+  parted:
+    device: '{{ application_stor_lab }}'
+    number: 1
+    state: present
+    part_end: "100%"
+    label: gpt
+    fs_type: ext4
+  register: application_parted
+  when: isPhysical
+
+- name: format_application_part
+  shell: 'mkfs.ext4 {{ application_part }}'
+  when: application_parted.changed == true
+
+- name: Partition configuration/container storage device
+  parted:
+    device: '{{ containers_stor_lab }}'
+    number: 1
+    state: present
+    part_end: "100%"
+    label: gpt
+    fs_type: ext4
+  register: container_parted
+  when: isPhysical
+
+- name: format_containers_part
+  shell: 'mkfs.ext4 {{ containers_part }}'
+  when: container_parted.changed == true
+
+- name: Mounting nfs_share
+  mount:
+    src: "{{ nfs_share }}"
+    path: "{{ nec_svr_ops_dir_keystone }}"
+    state: mounted
+    fstype: nfs
+  changed_when: false
+
+- name: Create /mnt/keystone directory
+  file:
+    state: directory
+    path: '{{ keystone_app_stor_dir }}'
+
+- name: Create /mnt/data directory
+  file:
+    state: directory
+    path: '{{ keystone_data_stor_dir }}'
+
+- name: Configure fstab for application storage device
+  lineinfile:
+    path: /etc/fstab
+    line: '{{ application_part }} {{ keystone_app_stor_dir }} ext4 defaults 0 0'
+    state: present
+    regexp: '^(?i){{ application_part }}\s{{ keystone_app_stor_dir }}\sext4\sdefaults\s0\s0'
+  register: app_stor_mount
+  when: isPhysical
+
+- name: Verify fstab application storage configuration
+  replace:
+    path: /etc/fstab
+    regexp: '^(?i){{ application_part }}\s{{ keystone_app_stor_dir }}\sext4\sdefaults\s0\s0'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: isPhysical
+
+- name: Mount application storage device
+  mount:
+    src: '{{ application_part }}'
+    path: '{{ keystone_app_stor_dir }}'
+    fstype: ext4
+    state: mounted
+  when: app_stor_mount.changed == true
+
+- name: Configure fstab for containers storage device
+  lineinfile:
+    path: '/etc/fstab'
+    line: '{{ containers_part }} {{ keystone_data_stor_dir }} ext4 defaults 0 0'
+    state: present
+    regexp: '^(?i){{ containers_part }}\s{{ keystone_data_stor_dir }}\sext4\sdefaults\s0\s0'
+  register: containers_stor_mount
+  when: isPhysical
+
+- name: Verify fstab containers storage configuration
+  replace:
+    path: /etc/fstab
+    regexp: '^(?i){{ containers_part }}\s{{ keystone_data_stor_dir }}\sext4\sdefaults\s0\s0'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: isPhysical
+
+- name: Mount containers storage device
+  mount:
+    src: '{{ containers_part }}'
+    path: '{{ keystone_data_stor_dir }}'
+    fstype: ext4
+    state: mounted
+  when: containers_stor_mount.changed == true
+
+- name: Combine host fstab list
+  set_fact:
+    combined_host_list: '{{ fstab_config_host | join }}'
+
+- name: Combine default fstab list
+  set_fact:
+    combined_default_list: '{{ fstab_config_default | join }}'
+
+- name: Combine all fstab lists
+  set_fact:
+    combined_regexp_list: '{{ fstab_regexp_begin + combined_host_list + combined_default_list + fstab_regexp_end}}'
+  
+- name: Remove fstab lines matching disallowed mounts
+  lineinfile:
+    path: /etc/fstab
+    regexp: '{{ combined_regexp_list }}'
+    state: absent
+
+- name: Install nvidia drivers
+  package:
+    name: nvidia-driver-535
+    state: present
+  register: multi_user_target
+  when: isPhysical
+
+- name: Change systemd target to multi-user
+  shell: 'systemctl set-default multi-user.target'
+  when: multi_user_target.changed == true
+
+- name: Add nvidia github repo to apt sources
+  shell: echo 'deb [trusted=yes] https://nvidia.github.io/libnvidia-container/stable/deb/$(ARCH) /' | sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+  args:
+    chdir: /etc/apt/sources.list.d
+    creates: nvidia-container-toolkit.list
+  register: nvidia_repo
+
+- name: Update apt
+  apt:
+    update_cache: yes
+  failed_when: false
+  when: nvidia_repo.changed == true
+
+- name: Install nvidia toolkit
+  package:
+    name: nvidia-container-toolkit
+    state: present
+  notify: restart_docker
+  register: nvidia_toolkit
+
+- name: Configure nvidia-ctk runtime
+  shell: 'sudo nvidia-ctk runtime configure --runtime=docker'
+  when: nvidia_toolkit.changed == true
+
+- name: Read PEM file
+  slurp:
+    src: "{{ nec_svr_ops_dir_keystone }}/keystone/certs/certificates_v5_13_dod.pem"
+  register: pem_file
+
+- name: Copy PEM file
+  copy:
+    content: "{{ pem_file.content | b64decode | regex_replace('\r\n', '\n') }}"
+    dest: /usr/local/certificates_v5_13_dod.pem
+
+- name: make mtls directory
+  file:
+    path: '{{ keystone_compose }}/mtls'
+    state: directory
+    mode: '0755'
+
+- name: Create .env file
+  template:
+    src: .env.j2
+    dest: '{{ keystone_compose }}/.env'
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Copy keystone m2m script
+  copy:
+    src: "{{ keystone_library }}/generate-m2m-certs.sh"
+    dest: "{{ keystone_compose }}"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+    remote_src: yes
+
+- name: Copy keystone rabbitmq.conf
+  copy:
+    src: "{{ keystone_library }}/rabbitmq.conf"
+    dest: "{{ keystone_compose }}"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+    remote_src: yes
+
+- name: Copy keystone server.cnf
+  copy:
+    src: "{{ keystone_library }}/server.cnf"
+    dest: "{{ keystone_compose }}"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+    remote_src: yes
+
+- name: Copy keystone start_backend script
+  copy:
+    src: "{{ keystone_library }}/start_backend.sh"
+    dest: "{{ keystone_compose }}"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+    remote_src: yes
+
+- name: Check if server.key already exist
+  stat:
+    path: "{{ keystone_compose }}/server.key"
+  register: key_check
+
+- name: Create self-signed certs
+  command:
+    cmd: 'openssl req -x509 -subj "/C=US/O=example/OU=Personal/CN=$(hostname)" -nodes -days 365 -newkey rsa:2048 -keyout server.key -out server.crt'
+    chdir: '{{ keystone_compose }}'
+  failed_when: false
+  changed_when: false
+  when: not key_check.stat.exists
+
+- name: Check if mTLS certs already exist
+  stat:
+    path: "{{ keystone_compose }}/mtls/ca.pem"
+  register: cert_check
+
+- name: Create mtls certs
+  command:
+    cmd: "./generate-m2m-certs.sh"
+    chdir: '{{ keystone_compose }}'
+  when: not cert_check.stat.exists
+
+- name: Append dod certs into ca.pem 
+  shell: "cat /usr/local/certificates_v5_13_dod.pem >> {{ keystone_compose }}/mtls/ca.pem"
+  args:
+    executable: /bin/bash
+  when: not cert_check.stat.exists
+
+- name: Strip carriage returns from cert
+  shell: sed -i 's/\r$//' ./ca.pem
+  args:
+    chdir: '{{ keystone_compose }}/mtls'
+  when: not cert_check.stat.exists
+
+- name: Get volume backup list Keystone
+  find:
+    paths: "{{ keystone_restore_dir }}"
+    file_type: file
+  register: backups
+  when: keystone_mode in ["restore"]
+
+- name: Get newest volume backup Keystone
+  set_fact:
+    newest: "{{ backups.files | sort(attribute='mtime') | last }}"
+  when: keystone_mode in ["restore"]
+
+- name: Restoring volume Keystone
+  command:
+    cmd: "tar xvpf {{ newest.path }}"
+    chdir: "{{keystone_db_volume_dir}}"
+  changed_when: false
+  when: keystone_mode in ["restore"]

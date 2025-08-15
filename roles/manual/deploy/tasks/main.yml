@@ -1,0 +1,46 @@
+- name: Ensure server registered
+  command: subscription-manager status
+  register: subscription
+  failed_when: false
+  changed_when: false
+  when: (ansible_facts.distribution is defined) and ansible_facts.distribution == 'RedHat'
+
+- name: Setting host
+  set_fact:
+    hostname: "{{HOSTS}}"
+
+- name: Ensure redhat.repo file is removed
+  file:
+    path: /etc/yum.repos.d/redhat.repo
+    state: absent
+  when: (ansible_facts.distribution is defined) and ansible_facts.distribution == 'RedHat'
+
+- name: Register server
+  shell: "curl -sSk {{rhss_register}} -H 'Authorization: Bearer {{rhss_auth}}'| bash"
+  when: (ansible_facts.distribution is defined) and ansible_facts.distribution == 'RedHat' and (ManagedByCode) and (create_vm) and subscription.rc == 1
+
+- name: Ensure python is installed
+  package:
+    name: python3
+    state: present
+  when: (ansible_facts.distribution is defined) and ansible_facts.distribution == 'RedHat' and (ManagedByCode) and (create_vm)
+
+- import_tasks:
+    file: ./roles/rhel8/tasks/packages.yml
+  when: (run_rhel) and ansible_facts.distribution is defined and ansible_facts.distribution == 'RedHat' and (ManagedByCode) and (create_vm)
+
+- import_role:
+    name: 'user_management'
+  when: ManagedByCode
+
+- import_role:
+    name: 'nessus'
+  when: ManagedByCode 
+
+- import_role:
+    name: 'ubuntu'
+  when: (run_ubuntu) and (ansible_facts.distribution is defined) and (ansible_facts.distribution == 'Ubuntu') and (ManagedByCode)
+
+- import_role:
+    name: 'rhel8'
+  when: (run_rhel) and (ansible_facts.distribution is defined) and (ansible_facts.distribution == 'RedHat')  and (ManagedByCode)

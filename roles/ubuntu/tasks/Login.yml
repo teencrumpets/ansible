@@ -1,0 +1,124 @@
+- name: Login - Limit the number of concurrent sessions - V-270677
+  lineinfile:
+    path: /etc/security/limits.conf
+    line: '* hard maxlogins 10'
+    insertbefore: BOF
+    regexp: '(?i)^\*\shard\smaxlogins'
+  when: manage_ubuntu_V_270677
+
+- name: Login - Verify concurrent login session configuration - V-270677
+  replace:
+    path: /etc/security/limits.conf
+    replace: ''
+    regexp: '(?i)^\*\shard\smaxlogins'
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_270677
+
+- name: Login - Configure automatic termination of a user's session - V-270680
+  lineinfile:
+    path: /etc/profile.d/99-terminal_tmout.sh
+    create: true
+    line: 'TMOUT=600'
+    regexp: '(?i)^TMOUT='
+  when: manage_ubuntu_V_270680
+
+- name: Login - Verify user session automatic timeout - V-270680
+  replace:
+    path: /etc/profile.d/99-terminal_tmout.sh
+    replace: ''
+    regexp: '(?i)^TMOUT='
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_270680
+
+- name: Login - Configuring banner - V-270691
+  lineinfile:
+    path: '/etc/ssh/sshd_config'
+    line: 'Banner /etc/issue.net'
+    state: present
+    regexp: '(?i)^Banner'
+  when: manage_ubuntu_V_270691
+
+- name: Login - Verify banner configuration - V-270691
+  replace:
+    path: '/etc/ssh/sshd_config'
+    replace: ''
+    regexp: '(?i)^Banner'
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_270691
+
+- name: Login - Copy 'issue.net' file to /etc/issue.net - V-270691
+  copy:
+    src: issue.net
+    dest: /etc/issue.net
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart SSHD
+  when: manage_ubuntu_V_270691
+
+- name: Login - Get list of duplicate UIDs - V-270720
+  shell: awk -F ":" 'list[$3]++{print $1, $3}' /etc/passwd 
+  register: duplicate_UIDs
+  failed_when: duplicate_UIDs.stdout_lines
+  changed_when: false 
+  when: manage_ubuntu_V_270720
+
+- name: Login - Prevent direct login to root account - V-270724
+  user: 
+    name: root
+    password_lock: true
+  when: manage_ubuntu_V_270724
+
+- name: Login - Configure /etc/login.defs - V-270730, V-270731, V-270739
+  lineinfile:
+    path: /etc/login.defs
+    line: "{{ item.line }}"
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { line: 'PASS_MIN_DAYS 1', regexp: '(?i)^PASS_MIN_DAYS\s', managed: 'manage_ubuntu_V_270730' }
+    - { line: 'PASS_MAX_DAYS 60', regexp: '(?i)^PASS_MAX_DAYS\s', managed: 'manage_ubuntu_V_270731' }
+    - { line: 'ENCRYPT_METHOD SHA512', regexp: '(?i)^ENCRYPT_METHOD\sSHA512', managed: 'manage_ubuntu_V_270739' }
+  when: item.managed
+
+- name: Login - Verify /etc/login.defs configuration - V-270730, V-270731, V-270739
+  replace:
+    path: /etc/login.defs
+    replace: ''
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { regexp: '(?i)^PASS_MIN_DAYS\s', managed: 'manage_ubuntu_V_270730' }
+    - { regexp: '(?i)^PASS_MAX_DAYS\s', managed: 'manage_ubuntu_V_270731' }
+    - { regexp: '(?i)^ENCRYPT_METHOD\sSHA512', managed: 'manage_ubuntu_V_270739' }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed
+
+- name: Login - Map authenticated identity to user/group account for PKI-based authentication - V-270736
+  lineinfile:
+    path: /etc/sssd/sssd.conf
+    create: true
+    line: 'ldap_user_certificate=userCertificate;binary'
+    regexp: '(?i)^ldap_user_certificate'
+  when: manage_ubuntu_V_270736
+
+- name: Login - Verify configuration of authenticated identity to user/group account for PKI-based authentication - V-270736
+  replace:
+    path: /etc/sssd/sssd.conf
+    replace: ''
+    regexp: '(?i)^ldap_user_certificate'
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_270736

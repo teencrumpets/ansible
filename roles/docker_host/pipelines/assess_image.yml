@@ -1,0 +1,94 @@
+trigger: none
+
+pool:
+  name: 's6_ondemand_24.04'
+
+parameters:
+  - name: param_reg
+    displayName: "Source Registry:"
+    type: string
+    values:
+      - 'Docker Hub'
+      - 'YPG Harbor'
+
+  - name: set_tmp_dir_trivy
+    displayName: "Large image"
+    type: string
+    default: 'False'
+    values:
+      - 'True'
+      - 'False'
+
+  - name: image_repo
+    displayName: "Full image repository:"
+    type: string
+
+  - name: image_tag
+    displayName: "Image tag:"
+    type: string
+
+variables:
+  - group: Ansible
+
+  - name: registry
+    ${{ if eq(parameters.param_reg, 'Docker Hub') }}:
+      value: "docker.io"
+    ${{ if eq(parameters.param_reg, 'YPG Harbor') }}:
+      value: "registry.web.yuma.army.mil"
+
+  - name: set_tmp_dir_trivy
+    ${{ if eq(parameters.set_tmp_dir_trivy, 'True') }}:
+      value: "/mnt/svr_ops/docker/build_agent"
+    ${{ if eq(parameters.set_tmp_dir_trivy, 'False') }}:
+      value: ""
+
+steps: 
+- task: DownloadSecureFile@1
+  name: vault_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: 'vault_key'
+
+- script: >
+    ansible-playbook dynamic-site.yml 
+    -e
+    "ENV=prod
+    role=docker_host
+    trivy_tmp_dir=$(set_tmp_dir_trivy)
+    vcenter_datacenter=UCS-Lab
+    vm_folder=_ServerBuild
+    vm_name=$(Agent.Name)
+    rm_hosts_file=/home/ado_build_agent/.ssh/known_hosts
+    build_agent_name=$(Agent.Name)
+    mode=assess_image
+    vm_cleanup=true
+    run_ubuntu=''
+    registry=$(registry)
+    source_registry=$(registry)
+    image_repo=${{parameters.image_repo}}
+    image_tag=${{parameters.image_tag}}
+    artifact_drop=$(System.DefaultWorkingDirectory)"
+    --vault-password-file=$(vault_key.secureFilePath)
+  displayName: 'Image assessment'
+
+- task: CopyFiles@2
+  inputs:
+    sourceFolder: '$(System.DefaultWorkingDirectory)'
+    contents: |
+      **/*_malware.txt
+      **/*_sbom.json
+      **/*_vulnerabilities.json
+    targetFolder: '$(Build.ArtifactStagingDirectory)'
+    CleanTargetFolder: true
+    Overwrite: true
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    pathToPublish: '$(Build.ArtifactStagingDirectory)'
+    artifactName: artifacts
+
+- script: 'rm -rf $(Build.ArtifactStagingDirectory)'
+  displayName: 'remove artifacts'
+
+- script: 'rm -rf $(Build.SourcesDirectory)'
+  displayName: 'remove artifacts from sources'

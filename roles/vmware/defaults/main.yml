@@ -1,0 +1,10 @@
+agent1_mac: "00:50:56:b8:dc:69"
+agent6_mac: "00:50:56:b8:67:d7"
+agent2_mac: "00:50:56:b5:19:55"
+agent3_mac: "00:50:56:b5:da:a3"
+agent4_mac: "00:50:56:b5:15:7b"
+agent5_mac: "00:50:56:b5:2a:9c"
+check_vm: true
+vm_cleanup: false
+vm_operating_system: Ubuntu
+assigned_sa: validation_sa 

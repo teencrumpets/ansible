@@ -1,0 +1,33 @@
+services:
+  server:
+    container_name: "{{ minio_container_name }}"
+    image: "minio/minio:{{ minio_version }}"
+    restart: unless-stopped
+    ports:
+      - '{{ minio_port }}:9000'
+      - '{{ minio_console_port }}:9001'
+    environment:
+      - VIRTUAL_HOST=minio.my.net
+      - VIRTUAL_PORT=9000
+      - 'MINIO_ROOT_USER={{ minio_user }}'
+      - 'MINIO_ROOT_PASSWORD={{ minio_pawd }}'
+    command: server --console-address ":9001" /data
+    volumes:
+      - 'data:/data'
+    logging:
+      options:
+        tag: "{{ minio_container_name }}"
+    networks:
+      - internal_net
+
+volumes:
+  data:
+    name: "{{ minio_data }}"
+
+networks:
+  internal_net:
+    driver: bridge
+    ipam:
+     driver: default
+     config:
+       - subnet: "{{ minio_subnet }}"

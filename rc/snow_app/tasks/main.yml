@@ -1,0 +1,240 @@
+- import_role:
+    name: 'rhel8'
+  when: run_rhel
+
+- name: Update package lists
+  dnf:
+    update_cache: yes
+  when: mode in ["deploy"]
+
+- name: Install required packages
+  package:
+    name: "{{ item.name }}"
+    state: present 
+  with_items:
+    - { name: glibc }
+    - { name: libgcc }
+    - { name: glibc.i686 }
+    - { name: libgcc.i686 }
+  when: mode in ["deploy"]
+
+- name: Set vm.swappiness to 1
+  lineinfile:
+    path: /etc/sysctl.conf
+    regexp: '^vm.swappiness\s*='
+    line: 'vm.swappiness = 1'
+
+- name: Verify vm.swappiness 
+  replace:
+    path: /etc/sysctl.conf
+    regexp: '^vm.swappiness\s*='
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  ignore_errors: true
+  changed_when: false
+
+- name: Create servicenow user account
+  user:
+    name: servicenow
+    password: servicenow
+    password_expire_max: 99999
+    password_expire_min: 1
+    shell: /bin/bash
+    home: /home/servicenow
+    state: present
+
+- name: Download Glide base package
+  get_url:
+    url: "{{ glide_install }}"
+    dest: "{{ glide_dest }}"
+
+- name: Extract glide-base from a tar archive
+  command:
+    cmd: "tar zxf /glide/{{glide_base}} -C /glide"
+  args:
+    creates: /glide/bin
+  changed_when: false
+
+- name: snow mount point directory
+  file:
+    state: directory
+    path: "{{ mount_snow_app }}"
+  when: mode in ["deploy"]
+
+- name: Mount NFS svr_ops share
+  mount:
+    src: "{{ nfs_share }}"
+    path: '{{ mount_snow_app }}'
+    state: mounted
+    fstype: nfs
+  changed_when: false
+  when: mode in ["deploy"]
+
+- name: snow install files directory
+  file:
+    state: directory
+    path: "{{ snow_files_dir }}"
+  when: mode in ["deploy"]
+ 
+- name: Extract java from a tar archive
+  unarchive:
+    src: "{{ jdk_dest }}"
+    dest: /glide
+    remote_src: yes
+    creates: "{{ java_ver }}"
+  changed_when: false
+
+- name: chown the java directory 
+  file:
+    path: /glide/{{ java_ver }}
+    owner: servicenow
+    group: root
+    state: directory
+    recurse: true
+
+- name: Create a symbolic link to java
+  file:
+    src: "{{ java_ver }}"
+    dest: /glide/java
+    state: link
+
+- name: Add lines to .bashrc file for servicenow
+  lineinfile:
+    path: ~servicenow/.bashrc
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items: 
+    - { line: 'export JAVA_HOME=/glide/java', regexp: '^(?i)export\s+JAVA_HOME=.*' }
+    - { line: 'export PATH=$JAVA_HOME/bin:$PATH', regexp: '^(?i)export\s+PATH=.*' }
+
+- name: Verify lines added to .bashrc file
+  replace:
+    path: ~servicenow/.bashrc
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items: 
+  - { regexp: '^(?i)export\s+JAVA_HOME=.*' }
+  - { regexp: '^(?i)export\s+PATH=.*' }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+
+- name: Set installation java path
+  shell: export PATH=$PATH:/glide/java/bin
+  args:
+    chdir: /glide/java/bin 
+
+- name: Copy File from NFS Share
+  copy:
+    src: "{{ snow_files_dir }}/{{ snow_install }}"
+    dest: /glide/nodes/
+    remote_src: yes
+
+- name: install Appnode
+  shell: "./java -jar /glide/nodes/{{ snow_install }} --dst-dir /glide/nodes/{{snow_db}} install -n servicenow -p {{snow_port}} -x glide.sys.boot_script=zboot.js"
+  args:
+    chdir: /glide/java/bin
+    creates: /glide/nodes/{{snow_db}}
+  changed_when: false
+
+- name: chown the glide/servicenow directory 
+  file:
+    path: /glide/nodes/{{snow_db}}
+    owner: servicenow
+    group: servicenow
+    state: directory
+    recurse: true
+
+- name: writh snc.service file to destination system directory
+  template:
+    src: snc.service.j2
+    dest: /etc/systemd/system/snc.service
+    owner: root
+    group: root
+    mode: 0644
+  changed_when: false
+
+- name: Reload systemd daemon
+  command: systemctl daemon-reload
+
+- name: Check current default zone
+  command: firewall-cmd --get-default-zone
+  register: current_zone
+
+- name: Set firewall default zone to work
+  command: firewall-cmd --set-default-zone=work
+  when: current_zone.stdout != 'work'
+
+- name: Modify firewall to allow connections to SNOW Port
+  firewalld:
+    zone: work
+    port: "{{ fw_port }}"
+    permanent: true
+    state: enabled
+
+- name: Reload firewalld
+  service:
+    name: firewalld
+    state: reloaded
+
+- name: Create a symbolic link to snc.service
+  file:
+    src: /etc/systemd/system/snc.service
+    dest: /etc/systemd/system/multi-user.target.wants/snc.service
+    state: link
+
+- name: write glide.db.properties file to appropriate directory
+  template:
+    src: glide.db.properties.j2
+    dest: /glide/nodes/{{snow_db}}/conf/glide.db.properties
+    owner: servicenow
+    group: servicenow
+    mode: 0644
+  tags: template
+
+- name: write glide.properties file appropriate directory
+  template:
+    src: glide.properties.j2
+    dest: /glide/nodes/{{snow_db}}/conf/glide.properties
+    owner: servicenow
+    group: servicenow
+    mode: 0644
+  tags: template
+
+- name: run the Grants command for the app node to Database
+  command: mysql -u root -p{{ mysql_root_password }} -e "GRANT {{ mysql_privileges }} ON {{ snow_db }}.* TO '{{ mysql_user }}'@'{{ mysql_host }}' IDENTIFIED BY '{{ mysql_password }}';"
+  delegate_to: mariadb
+  become: true
+  become_user: root
+  args:
+    creates: /tmp/mysql_grant_marker
+
+- name: Flush privileges (still necessary)
+  command: mysql -u root -p{{ mysql_root_password }} -e "FLUSH PRIVILEGES;"
+  delegate_to: mariadb
+  become: true
+  become_user: root
+
+- name: Set SELinux to permissive - persistent
+  lineinfile:
+    path: /etc/selinux/config
+    regexp: '^SELINUX\s*='
+    line: 'SELINUX=permissive'
+
+- name: Verifying SELinux has been updated
+  replace:
+    path: /etc/selinux/config
+    regexp: '^SELINUX\s*='
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  ignore_errors: true
+  changed_when: false
+
+- name: reboot server
+  reboot:

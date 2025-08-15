@@ -1,0 +1,92 @@
+- import_role:
+    name: 'docker_host'
+  when: run_docker
+
+- name: Ensure nfs-common is installed 
+  package: 
+    name: nfs-common
+    state: present 
+
+- name: Create NiFi manager node compose directory
+  file:
+    state: directory
+    path: /opt/compose/{{ item.nifi_manager_dir }}/
+    owner: ypgansible
+    group: docker
+    mode: 0770
+  with_items: "{{ nifi_managers }}"
+  when: ((nifi_manager == item.keys() | list | first) and (mode == "deploy_manager"))
+
+- name: Create NiFi cluster node compose directory
+  file:
+    state: directory
+    path: /opt/compose/{{ item.nifi_node_dir }}/
+    owner: ypgansible
+    group: docker
+    mode: 0770
+  with_items: "{{ nifi_nodes }}"
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))
+
+- name: Create backup mount directory
+  file:
+    state: directory
+    path: "{{ nifi_mount_dir }}"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Create manager compose file
+  template:
+    src: manager.yaml.j2
+    dest: /opt/compose/{{ item.nifi_manager_dir }}/compose.yaml
+    owner: ypgansible
+    group: docker
+    mode: 0550
+  when: ((nifi_manager == item.keys() | list | first) and (mode == "deploy_manager"))
+  with_items: "{{ nifi_managers }}"
+
+- name: Create cluster node compose file
+  template:
+    src: node.yaml.j2
+    dest: /opt/compose/{{ item.nifi_node_dir }}/compose.yaml
+    owner: ypgansible
+    group: docker
+    mode: 0550
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))
+  with_items: "{{ nifi_nodes }}"
+
+- name: Deploy node
+  import_tasks: deploy_node.yml
+  when: (mode == "deploy_node")
+
+- name: Deploy manager
+  import_tasks: deploy_manager.yml
+  when: (mode == "deploy_manager")
+
+- name: Backup nifi
+  import_tasks: backup.yml
+  when: (mode == "backup") or (mode == "update")
+
+- name: Start nifi node service
+  command:
+    cmd: 'docker compose up -d'
+    chdir: /opt/compose/{{ item.nifi_node_dir }}
+  changed_when: false
+  when: ((nifi_node == item.keys() | list | first) and (mode == "deploy_node"))
+  with_items: "{{ nifi_nodes }}"
+
+- name: Start nifi manager service
+  command:
+    cmd: 'docker compose up -d'
+    chdir: /opt/compose/{{ item.nifi_manager_dir }}
+  changed_when: false
+  when: ((nifi_manager == item.keys() | list | first) and (mode == "deploy_manager"))
+  with_items: "{{ nifi_managers }}"
+
+- name: Cleaning up mounts
+  mount:
+    src: "{{ nfs_share }}"
+    path: "{{ nifi_mount_dir }}"
+    state: absent
+    fstype: nfs
+  changed_when: false

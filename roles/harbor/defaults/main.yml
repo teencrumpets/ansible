@@ -1,0 +1,14 @@
+volume_backups: 1
+harbor_version: 2.11.1
+harbor_install_dir: "/opt/harbor"
+harbor_installed: false
+harbor_temp_dir: /tmp/harbor
+harbor_name: registry.web.yuma.army.mil
+harbor_port: 80
+harbor_subnet: 192.168.2.64/26
+
+backup_mount_dir_harbor: "{{ backup_mount_dir }}/harbor"
+
+#Harbor Backup directories 
+harbor_backup_dir: "{{backup_mount_dir_harbor}}/docker_volumes/harbor/{{ENV}}/data"
+harbor_restore_dir: "{{backup_mount_dir_harbor}}/docker_volumes/harbor/prod/data"

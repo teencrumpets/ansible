@@ -1,0 +1,54 @@
+- name: Mounting backup share
+  mount:
+    src: "{{ backup_share }}"
+    path: '{{ backup_mount_dir_keycloak }}'
+    state: mounted
+    fstype: nfs
+  changed_when: false
+
+- name: Create Keycloak Postgres volume backup directory
+  file:
+    state: directory
+    path: "{{ postgres_backup_dir }}"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Stopping Keycloak service
+  command:
+    cmd: 'docker compose down'
+    chdir: "{{ compose_path }}"
+  changed_when: false
+
+- name: Backing up Keycloak Database volume
+  command:
+    cmd: "tar cvpf {{ postgres_backup_dir }}/{{ lookup('pipe', 'date +%Y_%h_%d-%H-%M') }}_config.tar ."
+    chdir: "/var/lib/docker/volumes/{{ kc_db_volume }}"
+  changed_when: false
+
+- name: Get volume backup list Keycloak Database
+  find:
+    paths: "{{ postgres_backup_dir }}"
+    file_type: file
+  register: backups
+  failed_when: not backups.files
+
+- name: Find oldest backup of Keycloak Database
+  set_fact:
+    oldest: "{{ backups.files | sort(attribute='mtime') | first }}"
+    file_count: "{{ backups.files | length }}"
+
+- name: Info
+  debug:
+    msg: "The number of volume backups is {{ file_count }}"
+
+- name: Info
+  debug:
+    msg: "{{ backups.files }}"
+
+- name: Removing oldest Keycloak Database backup
+  file:
+    path: "{{ oldest.path }}"
+    state: absent
+  changed_when: false
+  when: file_count | int > volume_backups

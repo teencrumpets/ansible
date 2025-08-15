@@ -1,0 +1,8 @@
+# Confluence Service
+confluence_db_user: 'confluence_dev'
+confluence_proxy_name: "confluence.dev.yuma.army.mil"
+confluence_version: '8.5.4'
+confluence_ports: "8090"
+confluence_healthcheck: "http://localhost:8090/status"
+hostname: 'ubuntu-server'
+manage_users_profiles: ''

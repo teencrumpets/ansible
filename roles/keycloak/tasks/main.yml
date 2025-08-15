@@ -1,0 +1,141 @@
+- import_role:
+    name: 'docker_host'
+  when: run_docker
+
+- name: Get IP of {{ ansible_hostname }} for service file
+  set_fact:
+    keycloak_ip: "{{ ansible_host }}"
+  when: keycloak_mode in ["deploy", "update", "proxy_config"]
+   
+- name: Add Keycloak service file to Nginx
+  delegate_to: "{{ keycloak_nginx_server }}"
+  block:
+    - name: Run add service in nginx
+      import_role:
+        name: 'nginx'
+      vars:
+        nginx_mode: "add_service"
+        service_config: "{{ keycloak_service_file }}"
+        service_template: "{{ keycloak_service_template }}"
+        fqdn: "{{ keycloak_hostname }}"
+        app_server: "{{ keycloak_ip }}"
+        app_port: "{{ keycloak_port }}"
+  when: keycloak_mode in ["deploy", "update", "proxy_config"]
+
+- name: Create keycloak compose directory
+  file:
+    state: directory
+    path: "{{ compose_path }}"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Create NFS mount directory for binary data
+  file:
+    state: directory
+    path: '{{ nec_svr_ops_dir_keycloak }}'
+    owner: ypgansible
+    group: docker
+    mode: 0770
+  when: keycloak_mode in ["deploy", "update", "backup", "restore"]
+    
+- name: Create backup mount directory for Keycloak
+  file:
+    state: directory
+    path: '{{ backup_mount_dir_keycloak }}'
+    owner: ypgansible
+    group: docker
+    mode: 0770
+  when: keycloak_mode in ["backup", "restore"]
+
+- name: Ensure Keycloak is up
+  uri:
+    url: "https://{{ keycloak_hostname }}/realms/master/.well-known/openid-configuration"
+    method: GET
+    return_content: true
+    status_code: 200
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+    body_format: json
+    validate_certs: no
+  register: health_check
+  retries: 12
+  delay: 5
+  until: health_check.json.issuer is defined and health_check.json.issuer == "https://{{ keycloak_hostname }}/realms/master"
+  when: keycloak_mode in ["backup","update"]
+
+- name: Backup Keycloak
+  import_tasks: backup.yml
+  when: keycloak_mode in ["backup","update"]
+
+- name: Create Keycloak compose file
+  template:
+    src: compose.yaml.j2
+    dest: "{{ compose_path }}/compose.yaml"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+  when: keycloak_mode in ["update"]
+
+- name: Update Keycloak image
+  command:
+    cmd: 'docker compose pull'
+    chdir: "{{ compose_path }}"
+  changed_when: false
+  when: keycloak_mode in ["update"]
+  
+- name: Deploy Keycloak
+  import_tasks: deploy.yml
+  when: keycloak_mode in ["deploy", "restore"]
+
+- name: Restore Keycloak
+  import_tasks: restore.yml
+  when: keycloak_mode in ["restore"]
+
+- name: Stopping Keycloak service
+  command:
+    cmd: "docker compose down"
+    chdir: "{{ compose_path }}"
+  changed_when: false
+  when: keycloak_mode in ["bounce"]
+  
+- name: Start Keycloak service
+  command:
+    cmd: 'docker compose up -d'
+    chdir: "{{ compose_path }}"
+  changed_when: false
+  when: keycloak_mode in ["backup", "update", "restore", "bounce"]
+
+- name: Ensure Keycloak is up
+  uri:
+    url: "https://{{ keycloak_hostname }}/realms/master/.well-known/openid-configuration"
+    method: GET
+    return_content: true
+    status_code: 200
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+    body_format: json
+    validate_certs: no
+  register: health_check
+  retries: 12
+  delay: 5
+  until: health_check.json.issuer is defined and health_check.json.issuer == "https://{{keycloak_hostname}}/realms/master"
+  when: mode not in ["deploy"]
+
+- name: Cleaning up NFS mount
+  mount:
+    src: "{{ nfs_share }}"
+    path: "{{ nec_svr_ops_dir_keycloak }}"
+    state: absent
+    fstype: nfs
+  changed_when: false
+
+- name: Cleaning up backup mount
+  mount:
+    src: "{{ backup_share }}"
+    path: "{{ backup_mount_dir_keycloak }}"
+    state: absent
+    fstype: nfs
+  changed_when: false

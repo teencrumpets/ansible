@@ -1,0 +1,66 @@
+services:
+  postgres:
+    container_name: "{{ postgres_container_name }}"
+    image: "{{ harbor_url_for_postgres }}:{{ postgres_version_tag }}"
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: "{{ confluence_db_connection }}"
+      POSTGRES_USER: "{{ confluence_db_user }}"
+      POSTGRES_PASSWORD: "{{ confluence_db_pass }}"
+      LANG: "{{ collation }}"
+    volumes:
+      - 'database:/var/lib/postgresql/data'
+    logging:
+      options:
+        tag: "{{ postgres_container_name }}"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U {{ confluence_db_connection }} -d {{ confluence_db_user }}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - internal_net
+
+  confluence-server:
+    container_name: "{{ confluence_container_name }}"
+    image: "{{ harbor_url_for_confluence }}:{{ confluence_version_tag }}"
+    restart: unless-stopped
+    ports:
+      - '{{ confluence_ports }}:8090'
+    volumes:
+      - 'conf-home:/var/atlassian/application-data/confluence'
+      - 'conf-ca:/ca'
+    environment:
+      JVM_SUPPORT_RECOMMENDED_ARGS: "-Djavax.net.ssl.trustStore=/ca/cacerts -Djavax.net.ssl.trustStorePassword={{ trustStorePass }} -security -Dorg.apache.catalina.connector.response.ENFORCE_ENCODING_IN_GET_WRITER=true -Dorg.apache.catalina.connector.RECYCLE_FACADES=true -Dorg.apache.catalina.STRICT_SERVLET_COMPLIANCE=true"
+      ATL_JDBC_URL: "jdbc:postgresql://{{postgres_container_name}}:5432/{{ confluence_db_connection }}"
+      ATL_JDBC_USER: "{{ confluence_db_user }}"
+      ATL_JDBC_PASSWORD: '{{ confluence_db_pass }}'
+      ATL_DB_TYPE: "postgresql"
+      ATL_PROXY_NAME: '{{ confluence_proxy_name }}'
+      ATL_PROXY_PORT: '443'
+      ATL_TOMCAT_SCHEME: 'https'
+      ATL_TOMCAT_SECURE: 'true'
+    logging:
+      options:
+        tag: "{{ confluence_container_name }}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sk {{ confluence_healthcheck }} | grep {{ confluence_expected_status }}"]
+      interval: 30s
+      timeout: 10s
+      retries: 15
+    networks:
+      - internal_net
+
+volumes:
+  database:
+    name: "{{ confluence_db_volume }}"
+  conf-home:
+    name: confluence-home
+  conf-ca:
+    name: confluence-ca
+  conf-config:
+    name: confluence-config
+
+networks:
+  internal_net:
+    driver: bridge

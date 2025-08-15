@@ -1,0 +1,41 @@
+- import_role:
+    name: 'docker_host'
+  when: not fast
+
+- name: Create Posgresql compose directory
+  file:
+    state: directory
+    path: "{{compose_path}}"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Create backup mount directory
+  file:
+    state: directory
+    path: "{{backup_mount_dir}}"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Mounting nfs backup share
+  mount:
+    src: "{{backup_share}}"
+    path: "{{backup_mount_dir}}"
+    state: mounted
+    fstype: nfs
+  changed_when: false
+
+- name: Create compose file
+  template:
+    src: compose.yaml.j2
+    dest: "{{compose_path}}/compose.yaml"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+
+- name: Start Postgresql service
+  command:
+    cmd: 'docker compose up -d'
+    chdir: "{{compose_path}}"
+  changed_when: false

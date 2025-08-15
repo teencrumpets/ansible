@@ -1,0 +1,97 @@
+- name: sysctl playbook - Configure /etc/sysctl.d/ - V-230266, V-230269, V-230270, V-230280, V-230311, V-230535, V-230536, V-230537, V-230538, V-230539, V-230540, V-230541, V-230542, V-230543, V-230544, V-230545, V-230546, V-230548, V-244550, V-244552, V-244553, V-244554, V-250317
+  lineinfile:
+    path: /etc/sysctl.d/99-sysctl.conf
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { line: 'kernel.kexec_load_disabled = 1', regexp: '^(?i)kernel\.kexec_load_disabled\s*=', managed: "{{ manage_rhel8_v_230266 }}" }
+    - { line: 'kernel.dmesg_restrict = 1', regexp: '^(?i)kernel\.dmesg_restrict\s*=', managed: "{{ manage_rhel8_v_230269 }}" }
+    - { line: 'kernel.perf_event_paranoid = 2', regexp: '^(?i)kernel\.perf_event_paranoid\s*=', managed: "{{ manage_rhel8_v_230270 }}" }
+    - { line: 'kernel.randomize_va_space = 2', regexp: '^(?i)kernel\.randomize_va_space\s*=', managed: "{{ manage_rhel8_v_230280 }}" }
+    - { line: 'kernel.core_pattern = |/bin/false', regexp: '^(?i)kernel\.core_pattern\s*=', managed: "{{ manage_rhel8_v_230311 }}" }
+    - { line: 'net.ipv6.conf.default.accept_redirects = 0', regexp: '^(?i)net\.ipv6\.conf\.default\.accept_redirects\s*=', managed: "{{ manage_rhel8_v_230535 }}" }
+    - { line: 'net.ipv4.conf.all.send_redirects = 0', regexp: '^(?i)net\.ipv4\.conf\.all\.send_redirects\s*=', managed: "{{ manage_rhel8_v_230536 }}" }
+    - { line: 'net.ipv4.icmp_echo_ignore_broadcasts = 1', regexp: '^(?i)net\.ipv4\.icmp_echo_ignore_broadcasts\s*=', managed: "{{ manage_rhel8_v_230537 }}" }
+    - { line: 'net.ipv6.conf.all.accept_source_route = 0', regexp: '^(?i)net\.ipv6\.conf\.all\.accept_source_route\s*=', managed: "{{ manage_rhel8_v_230538 }}" }
+    - { line: 'net.ipv6.conf.default.accept_source_route = 0', regexp: '^(?i)net\.ipv6\.conf\.default\.accept_source_route\s*=', managed: "{{ manage_rhel8_v_230539 }}" }
+    - { line: 'net.ipv6.conf.all.forwarding = 0', regexp: '^(?i)net\.ipv6\.conf\.all\.forwarding\s*=', managed: "{{ manage_rhel8_v_230540 }}" }
+    - { line: 'net.ipv6.conf.all.accept_ra = 0', regexp: '^(?i)net\.ipv6\.conf\.all\.accept_ra\s*=', managed: "{{ manage_rhel8_v_230541 }}" }
+    - { line: 'net.ipv6.conf.default.accept_ra = 0', regexp: '^(?i)net\.ipv6\.conf\.default\.accept_ra\s*=', managed: "{{ manage_rhel8_v_230542 }}" }
+    - { line: 'net.ipv4.conf.default.send_redirects = 0', regexp: '^(?i)net\.ipv4\.conf\.default\.send_redirects\s*=', managed: "{{ manage_rhel8_v_230543 }}" }
+    - { line: 'net.ipv6.conf.all.accept_redirects = 0', regexp: '^(?i)net\.ipv6\.conf\.all\.accept_redirects\s*=', managed: "{{ manage_rhel8_v_230544 }}" }
+    - { line: 'kernel.unprivileged_bpf_disabled = 1', regexp: '^(?i)kernel\.unprivileged_bpf_disabled\s*=', managed: "{{ manage_rhel8_v_230545 }}" }
+    - { line: 'kernel.yama.ptrace_scope = 1', regexp: '^(?i)kernel\.yama\.ptrace_scope\s*=', managed: "{{ manage_rhel8_v_230546 }}" }
+    - { line: 'user.max_user_namespaces = 0', regexp: '^(?i)user\.max_user_namespaces\s*=', managed: "{{ manage_rhel8_v_230548 }}" }
+    - { line: 'net.ipv4.conf.default.accept_redirects = 0', regexp: '^(?i)net\.ipv4\.conf\.default\.accept_redirects\s*=', managed: "{{ manage_rhel8_v_244550 }}" }
+    - { line: 'net.ipv4.conf.default.accept_source_route = 0', regexp: '^(?i)net\.ipv4\.conf\.default\.accept_source_route\s*=', managed: "{{ manage_rhel8_v_244552 }}" }
+    - { line: 'net.ipv4.conf.all.accept_redirects = 0', regexp: '^(?i)net\.ipv4\.conf\.all\.accept_redirects\s*=', managed: "{{ manage_rhel8_v_244553 }}" }
+    - { line: 'net.core.bpf_jit_harden = 2', regexp: '^(?i)net\.core\.bpf_jit_harden\s*=', managed: "{{ manage_rhel8_v_244554 }}" }
+    - { line: 'net.ipv4.conf.all.forwarding = 0', regexp: '^(?i)net\.ipv4\.conf\.all\.forwarding\s*=', managed: "{{ manage_rhel8_v_250317 }}" }
+  when: item.managed
+  notify: load_sysctl
+
+- name: sysctl playbook - Verify /etc/sysctl.d/ - V-230266, V-230269, V-230270, V-230280, V-230311, V-230535, V-230536, V-230537, V-230538, V-230539, V-230540, V-230541, V-230542, V-230543, V-230544, V-230545, V-230546, V-230548, V-244550, V-244552, V-244553, V-244554, V-250317
+  replace:
+    path: /etc/sysctl.d/99-sysctl.conf
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '^(?i)kernel\.kexec_load_disabled\s*=', managed: "{{ manage_rhel8_v_230266 }}" }
+    - { regexp: '^(?i)kernel\.dmesg_restrict\s*=', managed: "{{ manage_rhel8_v_230269 }}"}
+    - { regexp: '^(?i)kernel\.perf_event_paranoid\s*=', managed: "{{ manage_rhel8_v_230270 }}" }
+    - { regexp: '^(?i)kernel\.randomize_va_space\s*=', managed: "{{ manage_rhel8_v_230280 }}" }
+    - { regexp: '^(?i)kernel\.core_pattern\s*=', managed: "{{ manage_rhel8_v_230311 }}" }
+    - { regexp: '^(?i)net\.ipv6\.conf\.default\.accept_redirects\s*=', managed: "{{ manage_rhel8_v_230535 }}" }
+    - { regexp: '^(?i)net\.ipv4\.conf\.all\.send_redirects\s*=', managed: "{{ manage_rhel8_v_230536 }}" }
+    - { regexp: '^(?i)net\.ipv4\.icmp_echo_ignore_broadcasts\s*=', managed: "{{ manage_rhel8_v_230537 }}" }
+    - { regexp: '^(?i)net\.ipv6\.conf\.all\.accept_source_route\s*=', managed: "{{ manage_rhel8_v_230538 }}" }
+    - { regexp: '^(?i)net\.ipv6\.conf\.default\.accept_source_route\s*=', managed: "{{ manage_rhel8_v_230539 }}" }
+    - { regexp: '^(?i)net\.ipv6\.conf\.all\.forwarding\s*=', managed: "{{ manage_rhel8_v_230540 }}" }
+    - { regexp: '^(?i)net\.ipv6\.conf\.all\.accept_ra\s*=', managed: "{{ manage_rhel8_v_230541 }}" }
+    - { regexp: '^(?i)net\.ipv6\.conf\.default\.accept_ra\s*=', managed: "{{ manage_rhel8_v_230542 }}" }
+    - { regexp: '^(?i)net\.ipv4\.conf\.default\.send_redirects\s*=', managed: "{{ manage_rhel8_v_230543 }}" }
+    - { regexp: '^(?i)net\.ipv6\.conf\.all\.accept_redirects\s*=', managed: "{{ manage_rhel8_v_230544 }}" }
+    - { regexp: '^(?i)kernel\.unprivileged_bpf_disabled\s*=', managed: "{{ manage_rhel8_v_230545 }}" }
+    - { regexp: '^(?i)kernel\.yama\.ptrace_scope\s*=', managed: "{{ manage_rhel8_v_230546 }}" }
+    - { regexp: '^(?i)user\.max_user_namespaces\s*=', managed: "{{ manage_rhel8_v_230548 }}" }
+    - { regexp: '^(?i)net\.ipv4\.conf\.default\.accept_redirects\s*=', managed: "{{ manage_rhel8_v_244550 }}" }
+    - { regexp: '^(?i)net\.ipv4\.conf\.default\.accept_source_route\s*=', managed: "{{ manage_rhel8_v_244552 }}" }
+    - { regexp: '^(?i)net\.ipv4\.conf\.all\.accept_redirects\s*=', managed: "{{ manage_rhel8_v_244553 }}" }
+    - { regexp: '^(?i)net\.core\.bpf_jit_harden\s*=', managed: "{{ manage_rhel8_v_244554 }}" }
+    - { regexp: '^(?i)net\.ipv4\.conf\.all\.forwarding\s*=', managed: "{{ manage_rhel8_v_250317 }}" }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  notify: load_sysctl
+  when: item.managed
+
+- name: sysctl playbook - Configure |/bin/false /usr/lib/sysctl.d & /lib/sysctl.d/ - V-230311, V-230546
+  lineinfile:
+    path: "{{ item.path }}"
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { path: '/usr/lib/sysctl.d/50-coredump.conf', line: 'kernel.core_pattern = |/bin/false', regexp: '^(?i)kernel\.core\_pattern\s*=', managed: "{{ manage_rhel8_v_230311 }}"}
+    - { path: '/lib/sysctl.d/50-coredump.conf', line: 'kernel.core_pattern = |/bin/false', regexp: '^(?i)kernel\.core\_pattern\s*=', managed: "{{ manage_rhel8_v_230311 }}"}
+    - { path: '/usr/lib/sysctl.d/10-default-yama-scope.conf', line: 'kernel.yama.ptrace_scope = 1', regexp: '^(?i)kernel\.yama\.ptrace\_scope\s*=', managed: "{{ manage_rhel8_v_230546 }}"}
+    - { path: '/lib/sysctl.d/10-default-yama-scope.conf', line: 'kernel.yama.ptrace_scope = 1', regexp: '^(?i)kernel\.yama\.ptrace\_scope\s*=', managed: "{{ manage_rhel8_v_230546 }}"}
+  when: item.managed
+
+- name: sysctl playbook - Verify |/bin/false /usr/lib/sysctl.d & /lib/sysctl.d/ - V-230311, V-230546
+  replace:
+    path: "{{ item.path }}"
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { path: '/usr/lib/sysctl.d/50-coredump.conf', regexp: '^(?i)kernel\.core\_pattern\s*=', managed: "{{ manage_rhel8_v_230311 }}"}
+    - { path: '/lib/sysctl.d/50-coredump.conf', regexp: '^(?i)kernel\.core\_pattern\s*=', managed: "{{ manage_rhel8_v_230311 }}"}
+    - { path: '/usr/lib/sysctl.d/10-default-yama-scope.conf', regexp: '^(?i)kernel\.yama\.ptrace\_scope\s*=', managed: "{{ manage_rhel8_v_230546 }}"}
+    - { path: '/lib/sysctl.d/10-default-yama-scope.conf', regexp: '^(?i)kernel\.yama\.ptrace\_scope\s*=', managed: "{{ manage_rhel8_v_230546 }}"}
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed

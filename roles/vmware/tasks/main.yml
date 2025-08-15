@@ -1,0 +1,233 @@
+- name: Format assigned_sa for spacing
+  set_fact: 
+    assigned_sa_formatted: "{{ assigned_sa | regex_replace('_', ' ') }}"
+  when: vm_operating_system is defined and create_vm is defined
+
+- name: Select correct python path
+  set_fact: 
+    ansible_python_interpreter: "/home/{{ ansible_user }}/.local/share/pipx/venvs/ansible/bin/python"
+
+- name: Choose ubuntu template
+  set_fact:
+    vm_template: template_ubuntu-24.04
+  when: (vm_operating_system == 'Ubuntu') and create_vm is defined
+
+- name: Choose rhel template
+  set_fact:
+    vm_template: rhel8-template
+  when: (vm_operating_system == 'RHEL')  and create_vm is defined
+
+- name: Choose windows template if not dev and change subnet
+  set_fact:
+    vm_template: STIG_Template_Win_vTPM_Enabled
+    vm_net_name: "VLAN629-Deployment"
+  when: (vm_operating_system == 'Windows') and (create_vm is defined and create_vm) and (ENV != 'dev')
+
+- name: Choose generic (NO OS/BLANK) template
+  set_fact:
+    vm_template: STIG_Template_Mar2023
+  when: ((vm_operating_system == 'Application_Specific' or (vm_operating_system == 'Windows')) and (ENV == 'dev')) and (create_vm is defined)
+
+- name: build_agent_name variable is undefined, setting to false
+  set_fact:
+    build_agent_name: False
+  when: build_agent_name is undefined
+
+- name: Using {{ build_agent_name }} reserved MAC address
+  set_fact:
+    vm_mac: "{{ agent1_mac }}"
+  when: (build_agent_name == "ondemand_1") and (vm_state == "powered-on")
+
+- name: Using {{ build_agent_name }} reserved MAC address
+  set_fact:
+    vm_mac: "{{ agent6_mac }}"
+  when: (build_agent_name == "ondemand_2") and (vm_state == "powered-on")
+
+- name: Using {{ build_agent_name }} reserved MAC address
+  set_fact:
+    vm_mac: "{{ agent2_mac }}"
+  when: (build_agent_name == "scheduled_1") and (vm_state == "powered-on")
+
+- name: Using {{ build_agent_name }} reserved MAC address
+  set_fact:
+    vm_mac: "{{ agent5_mac }}"
+  when: (build_agent_name == "scheduled_2") and (vm_state == "powered-on")
+
+- name: Using {{ build_agent_name }} reserved MAC address
+  set_fact:
+    vm_mac: "{{ agent3_mac }}"
+  when: (build_agent_name == "triggered_1") and (vm_state == "powered-on")
+
+- name: Using {{ build_agent_name }} reserved MAC address
+  set_fact:
+    vm_mac: "{{ agent4_mac }}"
+  when: (build_agent_name == "triggered_2") and (vm_state == "powered-on")
+
+- name: vm_mac variable is undefined, setting to false
+  set_fact:
+    vm_mac: False
+  when: (vm_mac is undefined) and (vm_state == "powered-on")
+
+- name: Find if vm exists
+  vmware_guest_find:
+    hostname: "{{ vcenter_hostname }}"
+    username: "{{ vcenter_username }}"
+    password: "{{ vcenter_password }}"
+    name: "{{vm_name}}"
+  register: vm_info
+  failed_when: (vm_info.msg is defined) and (vm_info.msg != "Unable to find folders for virtual machine " ~ build_agent_name)
+  failed_when: False
+  when: check_vm
+
+- name: Cleaning up old vm
+  vmware_guest:
+    hostname: "{{ vcenter_hostname }}"
+    username: "{{ vcenter_username }}"
+    password: "{{ vcenter_password }}"
+    validate_certs: "{{ vcenter_validate_certs }}"
+    datacenter: "{{ vcenter_datacenter }}"
+    name: "{{ vm_name }}"
+    folder: "{{ vm_folder }}"
+    state: "absent"
+    force: true
+    guest_id: "{{ vm_guestid }}"
+    template: "{{ vm_template }}"
+    disk:
+      - size_gb: "{{ vm_disk_gb }}"
+        type: "{{ vm_disk_type }}"
+        datastore: "{{ vm_disk_datastore }}"
+    hardware:
+      memory_mb: "{{ vm_hw_ram_mb }}"
+      num_cpus: "{{ vm_hw_cpu_n }}"
+      scsi: "{{ vm_hw_scsi }}"
+  when: (vm_info.folders is defined) and (check_vm) and (vm_cleanup)
+
+- name: 'Configure virtual machine - Name: {{ vm_name }} - State: {{ vm_state }}'
+  vmware_guest:
+    hostname: "{{ vcenter_hostname }}"
+    username: "{{ vcenter_username }}"
+    password: "{{ vcenter_password }}"
+    validate_certs: "{{ vcenter_validate_certs }}"
+    datacenter: "{{ vcenter_datacenter }}"
+    name: "{{ vm_name }}"
+    folder: "{{ vm_folder }}"
+    state: "{{ vm_state }}"
+    force: true
+    guest_id: "{{ vm_guestid }}"
+    template: "{{ vm_template }}"
+    disk:
+      - size_gb: "{{ vm_disk_gb }}"
+        type: "{{ vm_disk_type }}"
+        datastore: "{{ vm_disk_datastore }}"
+    hardware:
+      memory_mb: "{{ vm_hw_ram_mb }}"
+      num_cpus: "{{ vm_hw_cpu_n }}"
+      scsi: "{{ vm_hw_scsi }}"
+
+- name: Create a New Category for SA Tags
+  vmware_category:
+    hostname: "{{ vcenter_hostname }}"
+    username: "{{ vcenter_username }}"
+    password: "{{ vcenter_password }}"
+    validate_certs: "{{ vcenter_validate_certs }}"
+    category_name: "Ownership"
+    category_cardinality: single
+    associable_object_types:
+      - Virtual Machine
+  delegate_to: localhost
+  register: sa_category
+  when: create_vm is defined
+
+- name: Create a New Category for OS Tags
+  vmware_category:
+    hostname: "{{ vcenter_hostname }}"
+    username: "{{ vcenter_username }}"
+    password: "{{ vcenter_password }}"
+    validate_certs: "{{ vcenter_validate_certs }}"
+    category_name: "Operating System"
+    category_cardinality: single
+    associable_object_types:
+      - Virtual Machine
+  delegate_to: localhost
+  register: os_category
+  when: create_vm is defined
+
+- name: Create SA tag
+  vmware_tag:
+    hostname: "{{ vcenter_hostname }}"
+    username: "{{ vcenter_username }}"
+    password: "{{ vcenter_password }}"
+    validate_certs: "{{ vcenter_validate_certs }}"
+    tag_name: "SA-{{ assigned_sa_formatted }}"
+    tag_description: Assigned System Admin"
+    category_id: "{{sa_category.category_results.category_id}}"
+  delegate_to: localhost
+  when: create_vm is defined
+ 
+- name: Create OS tag
+  vmware_tag:
+    hostname: "{{ vcenter_hostname }}"
+    username: "{{ vcenter_username }}"
+    password: "{{ vcenter_password }}"
+    validate_certs: "{{ vcenter_validate_certs }}"
+    tag_name: "OS-{{ vm_operating_system }}"
+    tag_description: "Operating System"
+    category_id: "{{os_category.category_results.category_id}}"
+  delegate_to: localhost
+  when: create_vm is defined
+
+- name: Add tags to a virtual machine
+  community.vmware.vmware_tag_manager:
+    hostname: '{{ vcenter_hostname }}'
+    username: '{{ vcenter_username }}'
+    password: '{{ vcenter_password }}'
+    validate_certs: "{{ vcenter_validate_certs }}"
+    tag_names:
+      - 'Ownership:SA-{{ assigned_sa_formatted }}'
+      - 'Operating System:OS-{{ vm_operating_system }}'
+    object_name: "{{ vm_name }}"
+    object_type: VirtualMachine
+    state: set
+  delegate_to: localhost
+  when: create_vm is defined
+ 
+- name: 'Connect Adaptor to VM - MAC Address: {{ vm_mac }}'
+  vmware_guest_network:
+    hostname: "{{ vcenter_hostname }}"
+    username: "{{ vcenter_username }}"
+    password: "{{ vcenter_password }}"
+    validate_certs: "{{ vcenter_validate_certs }}"
+    datacenter: "{{ vcenter_datacenter }}"  
+    name: "{{ vm_name }}"
+    network_name: "{{ vm_net_name }}"
+    mac_address: "{{ vm_mac }}"
+    start_connected: true
+    connected: true
+  when: vm_state == "powered-on" and vm_mac and (vm_operating_system not in ["Windows", "Application_Specific"])
+
+- name: 'Connect Adaptor to VM - No defined MAC Address'
+  vmware_guest_network:
+    hostname: "{{ vcenter_hostname }}"
+    username: "{{ vcenter_username }}"
+    password: "{{ vcenter_password }}"
+    validate_certs: "{{ vcenter_validate_certs }}"
+    datacenter: "{{ vcenter_datacenter }}"  
+    name: "{{ vm_name }}"
+    network_name: "{{ vm_net_name }}"
+    start_connected: true
+    connected: true
+  when: (vm_state == "powered-on") and (not vm_mac) and (vm_operating_system not in ["Windows", "Application_Specific"])
+
+- name: Get VM info
+  vmware_guest:
+    hostname: "{{ vcenter_hostname }}"
+    username: "{{ vcenter_username }}"
+    password: "{{ vcenter_password }}"
+    validate_certs: "{{ vcenter_validate_certs }}"
+    datacenter: "{{ vcenter_datacenter }}"
+    name: "{{ vm_name }}"
+  retries: 60
+  delay: 10
+  until: gather_vm_info.instance.ipv4
+  register: gather_vm_info
+  when: vm_state == "powered-on" and (vm_operating_system not in ["Windows", "Application_Specific"])

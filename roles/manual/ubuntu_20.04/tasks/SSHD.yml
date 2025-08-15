@@ -1,0 +1,94 @@
+- name: SSHD - Configuring /etc/ssh/sshd_config - V-238211, V-238212, V-238213, V-238216, V-238217, V-238218, V-238219, V-238220, V-255912
+  lineinfile:
+    path: '/etc/ssh/sshd_config'
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - {line: 'UsePAM yes', regexp: '^(?i)UsePam', managed: "{{ manage_ubuntu_V_238211 }}" }
+    - {line: 'ClientAliveCountMax 1', regexp: '^(?i)ClientAliveCountMax', managed: "{{ manage_ubuntu_V_238212 }}" }
+    - {line: 'ClientAliveInterval 600', regexp: '^(?i)ClientAliveInterval', managed: "{{ manage_ubuntu_V_238213 }}" }
+    - {line: 'MACs hmac-sha2-512,hmac-sha2-256', regexp: '^(?i)MACs', managed: "{{ manage_ubuntu_V_238216 }}" }
+    - {line: 'Ciphers aes256-ctr,aes192-ctr,aes128-ctr', regexp: '^(?i)Ciphers', managed: "{{ manage_ubuntu_V_238217 }}" }
+    - {line: 'PermitEmptyPasswords no', regexp: '^(?i)PermitEmptyPasswords', managed: "{{ manage_ubuntu_V_238218 }}" }
+    - {line: 'PermitUserEnvironment no', regexp: '^(?i)PermitUserEnvironment', managed: "{{ manage_ubuntu_V_238218 }}" }
+    - {line: 'X11Forwarding no', regexp: '^(?i)X11Forwarding', managed: "{{ manage_ubuntu_V_238219 }}" }
+    - {line: 'X11UseLocalhost yes', regexp: '^(?i)X11UseLocalhost', managed: "{{ manage_ubuntu_V_238220 }}" }
+    - {line: 'KexAlgorithms ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256', regexp: '^(?i)KexAlgorithms', managed: "{{manage_ubuntu_V_255912 }}" }
+  notify: Restart SSHD
+  when: item.managed
+
+- name: SSHD - Verify /etc/ssh/sshd_config  - V-238211, V-238212, V-238213, V-238216, V-238217, V-238218, V-238219, V-238220, V-255912
+  replace:
+    path: '/etc/ssh/sshd_config'
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '^(?i)UsePam', managed: "{{ manage_ubuntu_V_238211 }}" }
+    - { regexp: '^(?i)ClientAliveCountMax', managed: "{{ manage_ubuntu_V_238212 }}" }
+    - { regexp: '^(?i)ClientAliveInterval', managed: "{{ manage_ubuntu_V_238213 }}" }
+    - { regexp: '^(?i)MACs', managed: "{{ manage_ubuntu_V_238216 }}" }
+    - { regexp: '^(?i)Ciphers', managed: "{{ manage_ubuntu_V_238217 }}" }
+    - { regexp: '^(?i)PermitEmptyPasswords', managed: "{{ manage_ubuntu_V_238218 }}" }
+    - { regexp: '^(?i)PermitUserEnvironment', managed: "{{ manage_ubuntu_V_238218 }}" }
+    - { regexp: '^(?i)X11Forwarding', managed: "{{ manage_ubuntu_V_238219 }}" }
+    - { regexp: '^(?i)X11UseLocalhost', managed: "{{ manage_ubuntu_V_238220 }}" }
+    - { regexp: '^(?i)KexAlgorithms', managed: "{{ manage_ubuntu_V_255912 }}" }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed
+
+  #YPG Setting
+- name: SSHD - Check that second sshd file exists
+  stat:
+    path: /etc/ssh/sshd_config.d/50-cloud-init.conf
+  register: sshd_file
+
+- name: SSHD - Disabling password authentication
+  lineinfile:
+    path: '/etc/ssh/sshd_config'
+    line: 'PasswordAuthentication no'
+    state: present
+    regexp: '^(?i)PasswordAuthentication'
+  notify: Reload SSHD
+  when: ssh_key
+
+- name: SSHD - Enabling password authentication
+  lineinfile:
+    path: '/etc/ssh/sshd_config'
+    line: 'PasswordAuthentication yes'
+    state: present
+    regexp: '^(?i)PasswordAuthentication'
+  notify: Reload SSHD
+  when: not ssh_key
+
+- name: SSHD - Removing password auth from sshd config file
+  lineinfile:
+    path: '/etc/ssh/sshd_config.d/50-cloud-init.conf'
+    state: absent
+    regexp: '^(?i)PasswordAuthentication'
+  notify: Reload SSHD
+  when: (sshd_file.stat.exists)
+
+- name: SSHD - Check that second sshd file is not empty
+  shell: "test -s /etc/ssh/sshd_config.d/50-cloud-init.conf || echo 'empty'"
+  changed_when: false
+  register: sshd_file
+
+- name: SSHD - Removing file in sshd_config.d if empty
+  file: 
+    path: '/etc/ssh/sshd_config.d/50-cloud-init.conf'
+    state: absent
+  when: sshd_file.stdout == 'empty'
+
+- name: SSHD - Verify password authentication
+  replace:
+    path: '/etc/ssh/sshd_config'
+    regexp: '^(?i)PasswordAuthentication'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false

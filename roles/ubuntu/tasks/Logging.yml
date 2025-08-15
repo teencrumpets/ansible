@@ -1,0 +1,122 @@
+- name: Logging - Setup monitoring of remote access methods - V-270681
+  lineinfile:
+    path: /etc/rsyslog.d/50-default.conf
+    line: '{{ item.line }}'
+    regexp: '{{ item.regexp }}'
+    insertbefore: '(?i)^(?=[^#])([^\s])'
+    firstmatch: yes
+  with_items:
+    - { line: 'auth.*,authpriv.* /var/log/secure', regexp: '(?i)^auth\.\*' }
+    - { line: 'daemon.* /var/log/messages', regexp: '(?i)^daemon\.\*' }
+  notify: Restart Rsyslog
+  when: manage_ubuntu_V_270681
+
+- name: Logging - Verify remote access monitoring configuration - V-270681
+  replace:
+    path: /etc/rsyslog.d/50-default.conf
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '(?i)^auth\.\*' }
+    - { regexp: '(?i)^daemon\.\*' }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_270681
+
+- name: Logging - Configure TCP syncookies to be used - V-270753
+  lineinfile:
+    path: /etc/sysctl.conf
+    line: 'net.ipv4.tcp_syncookies = 1'
+    regexp: '(?i)^net\.ipv4\.tcp_syncookies\s'
+  when: manage_ubuntu_V_270753
+
+- name: Logging - Verify TCP syncookies configuration - V-270753
+  replace:
+    path: /etc/sysctl.conf
+    replace: ''
+    regexp: '(?i)^net\.ipv4\.tcp_syncookies\s'
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_270753
+
+# YPG Site Settings
+- name: Logging - Configure /etc/rsyslog.conf
+  lineinfile:
+    path: /etc/rsyslog.conf
+    line: '*.* @@{{ syslog_ip }}:{{ syslog_port }}'
+    regexp: '^\*\.\*\s+@.*'
+  when: manage_auditlog_offloading
+  notify: Restart Rsyslog
+
+- name: Logging - Verify /etc/rsyslog.conf
+  replace:
+    path: /etc/rsyslog.conf
+    regexp: '^\*\.\*\s+@.*'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_auditlog_offloading
+
+- name: Logging - Configure rsyslog.conf modules
+  lineinfile:
+    path: /etc/rsyslog.conf
+    insertbefore: BOF
+    line: '$ModLoad imfile'
+    regexp: '(?i)^\$ModLoad\simfile'
+  when: manage_auditlog_offloading
+  notify: Restart Rsyslog
+
+- name: Logging - Verify /etc/rsyslog.conf module configuration
+  replace:
+    path: /etc/rsyslog.conf
+    regexp: '(?i)^\$ModLoad\simfile'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_auditlog_offloading
+
+- name: Logging - Configure default file create permissions
+  lineinfile:
+    path: /etc/rsyslog.conf
+    insertafter: EOF
+    line: '$FileCreateMode 0640'
+    regexp: '(?i)^\$FileCreateMode\s'
+  when: manage_auditlog_offloading
+  notify: Restart Rsyslog
+
+- name: Logging - Verify rsyslog.conf file create permissions configuration
+  replace:
+    path: /etc/rsyslog.conf
+    replace: ''
+    regexp: '(?i)^\$FileCreateMode\s'
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_auditlog_offloading
+
+- name: Logging - Find and remove unnecessary lines
+  lineinfile: 
+    path: /etc/rsyslog.conf
+    state: absent
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { regexp: '(?i)^\$FileOwner' }
+    - { regexp: '(?i)^\$FileGroup' }
+    - { regexp: '(?i)^\$DirCreateMode' }
+    - { regexp: '(?i)^\$Umask' }
+    - { regexp: '(?i)^\$PrivDropToUser' }
+    - { regexp: '(?i)^\$PrivDropToGroup' }
+
+- name: Logging - Remove unnecessary Rsyslog filewatching
+  file:
+    path: /etc/rsyslog.d/00-ansible.conf
+    state: absent

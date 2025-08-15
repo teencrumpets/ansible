@@ -1,0 +1,4 @@
+- name: Restart PostgreSQL container
+  docker_container:
+    name: postgres
+    state: restarted

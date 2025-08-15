@@ -1,0 +1,41 @@
+- name: Health-Check - Copy compose template
+  template:
+    src: "compose.yaml.j2"
+    dest: "{{ compose_file_path }}"
+    owner: ypgansible
+    group: docker
+    mode: 0770
+  when: managed_compose
+
+- name: Health-Check - Read compose file
+  slurp:
+    src: "{{ compose_file_path }}"
+  register: compose_file
+
+- name: Health-Check - Parse compose file
+  set_fact:
+    converted_compose_file: "{{ compose_file.content | b64decode | from_yaml }}"
+
+- name: Health-Check - Get service names
+  set_fact:
+    services: "{{converted_compose_file.services | list}}"
+
+- name: Health-Check - Parse services
+  set_fact: 
+    container_list: "{{ (container_list | default([])) + [converted_compose_file.services[item].container_name] }}"
+  loop: "{{services}}"
+
+- name: Health-Check - Remove compose temmplate
+  file:
+    state: absent
+    path: "{{compose_file_path}}"
+  when: managed_compose
+
+- name: Health-Check - Wait for healthy status
+  shell: 'docker inspect --format="{{"{{.State.Health.Status}}"}}" "{{item}}"'
+  register: result
+  until: result.stdout == "healthy"
+  loop: "{{container_list}}"
+  retries: "{{retry_health_task}}"
+  delay: "{{time_between_task_attempts}}"
+  changed_when: false

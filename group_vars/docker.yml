@@ -1,0 +1,13 @@
+manage_ubuntu_V_238332: false
+
+# UFW
+block_gannon: true
+ufw_group:
+  - order: 100
+    rule: 'deny'
+    direction: 'in'
+    from_ip: 6.2.2.0/26
+    proto: 'any'
+    description: "Block external scanners"
+
+ufw_allow_routed: true

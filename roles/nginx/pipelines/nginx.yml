@@ -1,0 +1,116 @@
+trigger: none
+
+pool:
+  name: 's6_ondemand_24.04'
+
+parameters:
+  - name: ENV
+    displayName: "Select Environment:"
+    type: string
+    default: null
+    values:
+      - prod
+      - prep
+      - dev
+
+  - name: mode
+    displayName: "Select mode:"
+    type: string
+    default: null
+    values:
+      - update
+      - deploy
+      - bounce
+
+  - name: run_docker
+    displayName: "Run Docker"
+    type: string
+    default: false
+    values:
+      - true
+      - false
+
+  - name: run_ubuntu
+    displayName: "Run Ubuntu"
+    type: string
+    default: false
+    values:
+      - true
+      - false
+      
+variables:
+  - group: Ansible
+
+  - group: YPG_Environment
+
+  - name: vault
+    ${{ if eq(parameters.ENV, 'prod') }}:
+      value: "vault_key"
+    ${{ if eq(parameters.ENV, 'prep') }}:
+      value: "vault_key_prep"
+    ${{ if eq(parameters.ENV, 'dev') }}:
+      value: "vault_key_dev"
+
+  - name: inventory
+    ${{ if eq(parameters.ENV, 'prod') }}:
+      value: "inventory.yml"
+    ${{ if eq(parameters.ENV, 'prep') }}:
+      value: "Pre-Production-inventory.yml"
+    ${{ if eq(parameters.ENV, 'dev') }}:
+      value: "Lab-inventory.yml"
+
+  - name: hostname
+    ${{ if eq(parameters.ENV, 'prod') }}:
+      value: $(docker_host)
+    ${{ if eq(parameters.ENV, 'prep') }}:
+      value: $(docker_host_prep)
+    ${{ if eq(parameters.ENV, 'dev') }}:
+      value: $(docker_host_lab)
+
+  - name: run_ubuntu
+    ${{ if eq(parameters.run_ubuntu, 'true') }}:
+      value: "true"
+    ${{ if eq(parameters.run_ubuntu, 'false') }}:
+      value: ""
+
+  - name: run_docker
+    ${{ if eq(parameters.run_docker, 'true') }}:
+      value: "true"
+    ${{ if eq(parameters.run_docker, 'false') }}:
+      value: ""
+
+steps:
+- script: pipx upgrade --include-injected ansible
+  displayName: 'Upgrade pipx'
+
+- script: rm -f ~/.ssh/known_hosts
+  displayName: 'Purging known hosts'
+
+- task: DownloadSecureFile@1
+  name: ssh_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: 'ypgansible_ssh'
+
+- task: DownloadSecureFile@1
+  name: vault_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: $(vault)
+
+- script: chmod 600 $(ssh_key.secureFilePath)
+  displayName: 'Setting SSH Key permisisons'
+
+- script: >
+    ansible-playbook site.yml 
+    -i $(inventory_path)/$(inventory) 
+    -e"
+    HOSTS=$(hostname)
+    role=nginx
+    ENV=${{parameters.ENV}}
+    nginx_mode=${{parameters.mode}}
+    run_docker=$(run_docker)
+    run_ubuntu=$(run_ubuntu)" 
+    --vault-password-file=$(vault_key.secureFilePath) 
+    --key-file '$(ssh_key.secureFilePath)'
+  displayName: 'Running nginx'

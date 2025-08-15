@@ -1,0 +1,298 @@
+#Verify that all public (world-writeable) directories have the public sticky bit set
+- name: Filesystem - Get list of world-writeable directories - V-238332
+  shell:  find / -type d -perm -002 ! -perm -1000 2>/dev/null | cat
+  register: world_writeable_directories
+  changed_when: false
+  when: manage_ubuntu_V_238332
+
+- name: Filesystem - Set sticky bit for world-writeable directories - V-238332
+  file:
+    mode: 1777
+    state: directory
+    dest: '{{ item }}'
+  loop: '{{ world_writeable_directories.stdout_lines }}'
+  when: manage_ubuntu_V_238332
+
+- name: Filesystem - Get list of /var/log files - V-238337
+  shell: find /var/log -perm /137 -type f
+  register: log_files
+  changed_when: false
+  when: manage_ubuntu_V_238337
+
+- name: Filesystem - Set /var/log permissions - V-238337
+  file:
+    mode: u-x,g-wx,o-rwx
+    dest: '{{ item }}'
+  loop: '{{ log_files.stdout_lines }}'
+  when: manage_ubuntu_V_238337
+
+- name: Filesystem - Override permissions for /var/log files - V-238337
+  lineinfile:
+    path: "{{ item.path }}"
+    line: "{{ item.line }}"
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { path: '/usr/lib/tmpfiles.d/systemd.conf', line: 'z /var/log/journal 0640 root systemd-journal - -', regexp: '^(?i)z\s+\/var\/log\/journal\s' }
+    - { path: '/usr/lib/tmpfiles.d/systemd.conf', line: 'z /var/log/journal/%m 0640 root systemd-journal - -', regexp: '^(?i)z\s+\/var\/log\/journal\/%m\s' }
+    - { path: '/usr/lib/tmpfiles.d/systemd.conf', line: 'z /var/log/journal/%m/system.journal 0640 root systemd-journal - -', regexp: '^(?i)z\s+\/var\/log\/journal\/%m\/system\.journal' }
+    - { path: '/usr/lib/tmpfiles.d/systemd.conf', line: 'd /var/log/private 0640 root root -', regexp: '^(?i)d\s+\/var\/log\/private' }
+    - { path: '/usr/lib/tmpfiles.d/var.conf', line: 'f /var/log/wtmp 0640 root utmp -', regexp: 'f\s+\/var\/log\/wtmp' }
+    - { path: '/usr/lib/tmpfiles.d/var.conf', line: 'f /var/log/btmp 0640 root utmp -', regexp: '^(?i)f\s+\/var\/log\/btmp' }
+    - { path: '/usr/lib/tmpfiles.d/var.conf', line: 'f /var/log/lastlog 0640 root utmp -', regexp: '^(?i)f\s+\/var\/log\/lastlog' }
+  when: manage_ubuntu_V_238337
+
+- name: Filesystem - Verify overwrite permissions for /var/log files - V-238337
+  replace:
+    path: "{{ item.path }}"
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { path: '/usr/lib/tmpfiles.d/systemd.conf', regexp: '^(?i)z\s+\/var\/log\/journal\s' }
+    - { path: '/usr/lib/tmpfiles.d/systemd.conf', regexp: '^(?i)z\s+\/var\/log\/journal\/%m\s' }
+    - { path: '/usr/lib/tmpfiles.d/systemd.conf', regexp: '^(?i)z\s+\/var\/log\/journal\/%m\/system\.journal' }
+    - { path: '/usr/lib/tmpfiles.d/systemd.conf', regexp: '^(?i)d\s+\/var\/log\/private' }
+    - { path: '/usr/lib/tmpfiles.d/var.conf', regexp: 'f\s+\/var\/log\/wtmp' }
+    - { path: '/usr/lib/tmpfiles.d/var.conf', regexp: '^(?i)f\s+\/var\/log\/btmp' }
+    - { path: '/usr/lib/tmpfiles.d/var.conf', regexp: '^(?i)f\s+\/var\/log\/lastlog' }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_238337
+
+- name: Filesystem - Get list of system command files - V-238344 
+  command: find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -perm /022 -type d 
+  register: command_files
+  changed_when: false
+  when: manage_ubuntu_V_238344
+
+- name: Filesystem - Set command file directory permissions - V-238344
+  file:
+    mode: 0755
+    dest: '{{ item }}'
+  loop: '{{ command_files.stdout_lines }}'
+  when: manage_ubuntu_V_238344
+
+- name: Filesystem - Get list of system command files - V-238345
+  command: find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -user root -type d
+  register: command_files
+  changed_when: false
+  when: manage_ubuntu_V_238345
+
+- name: Filesystem - Set command file directory owner - V-238345
+  file:
+    owner: root
+    dest: '{{ item }}'
+  loop: '{{ command_files.stdout_lines }}'
+  when: manage_ubuntu_V_238345
+
+- name: Filesystem - Get list of system command files - V-238346
+  command: find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -group root -type d 
+  register: command_files
+  changed_when: false
+  when: manage_ubuntu_V_238346
+
+- name: Filesystem - Set command file directory group owner - V-238346
+  file:
+    group: root
+    dest: '{{ item }}'
+  loop: '{{ command_files.stdout_lines }}'
+  when: manage_ubuntu_V_238346
+
+- name: Filesystem - Get list of system command files - V-238376
+  command: find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -perm /022 -type f 
+  register: command_files
+  changed_when: false
+  when: manage_ubuntu_V_238376
+
+- name: Filesystem - Set command file permissions - V-238376
+  file:
+    mode: 0755
+    dest: '{{ item }}'
+  loop: '{{ command_files.stdout_lines }}'
+  when: manage_ubuntu_V_238376
+
+- name: Filesystem - Get list of system command files - V-238377
+  command: sudo find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -user root -type f
+  register: command_files
+  changed_when: false
+  when: manage_ubuntu_V_238377
+
+- name: Filesystem - Set command file owner - V-238377
+  file:
+    owner: root
+    dest: '{{ item }}'
+  loop: '{{ command_files.stdout_lines }}'
+  when: manage_ubuntu_V_238377
+
+- name: Filesystem - Get list of system command files - V-238378
+  shell: sudo find -L /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -group root -type f ! -perm /2000 | cat
+  register: command_files
+  changed_when: false
+  when: manage_ubuntu_V_238378
+
+- name: Filesystem - Set command file group owner - V-238378
+  file:
+    group: root
+    dest: '{{ item }}'
+  loop: '{{ command_files.stdout_lines }}'
+  when: manage_ubuntu_V_238378
+
+- name: Filesystem - Get list of /lib files - V-238347
+  command: find /lib -perm -022 -type f
+  register: lib_files
+  changed_when: false
+  when: manage_ubuntu_V_238347
+
+- name: Filesystem - Set /lib permissions - V-238347
+  file:
+    mode: 0755
+    dest: '{{ item }}'
+  loop: '{{ lib_files.stdout_lines }}'
+  when: manage_ubuntu_V_238347
+
+- name: Filesystem - Get list of /lib64 files - V-238347
+  command: find /lib64 -perm /022
+  register: lib64_files
+  changed_when: false
+  when: manage_ubuntu_V_238347
+
+- name: Filesystem - Set /lib64 permissions - V-238347
+  file:
+    mode: 0755
+    dest: '{{ item }}'
+  loop: '{{ lib64_files.stdout_lines }}'
+  when: manage_ubuntu_V_238347
+
+- name: Filesystem - Get list of /usr/lib files - V-238347
+  command: find /usr/lib -perm /022 -type f
+  register: usr_lib_files
+  changed_when: false
+  when: manage_ubuntu_V_238347
+
+- name: Filesystem - Set /usr/lib permissions - V-238347
+  file:
+    mode: 0755
+    dest: '{{ item }}'
+  loop: '{{ usr_lib_files.stdout_lines }}'
+  when: manage_ubuntu_V_238347
+
+- name: Filesystem - /lib directory permissions - V-238348
+  file:
+    path: /lib
+    mode: 0755
+  when: manage_ubuntu_V_238348
+
+- name: Filesystem - /lib64 directory permissions - V-238348
+  file:
+    path: /lib64
+    mode: 0755
+  when: manage_ubuntu_V_238348
+
+- name: Filesystem - /usr/lib directory permissions - V-238348
+  file:
+    path: /usr/lib
+    mode: 0755
+  when: manage_ubuntu_V_238348
+
+- name: Filesystem - Library files owner - V-238349, V-238350
+  file:
+    path: "{{ item.path }}"
+    state: directory
+    recurse: true
+    owner: root
+  with_items: 
+    - { path: '/lib' }
+    - { path: '/lib64' }
+    - { path: '/usr/lib' }
+  when: manage_ubuntu_V_238349 or manage_ubuntu_V_238350 
+
+- name: Filesystem - Library files group - V-238351, V-238352
+  file:
+    path: "{{ item.path }}"
+    state: directory
+    recurse: true
+    group: root
+  with_items: 
+    - { path: '/lib' }
+    - { path: '/lib64' }
+    - { path: '/usr/lib' }
+  when: manage_ubuntu_V_238351 or manage_ubuntu_V_238352
+
+- name: Filesystem - Get list of /bin files - V-238376
+  command: find /bin -perm /022 -type f
+  register: bin_files
+  changed_when: false
+  when: manage_ubuntu_V_238376
+
+- name: Filesystem - Set /bin permissions - V-238376
+  file:
+    mode: 0755
+    dest: '{{ item }}'
+  loop: '{{ bin_files.stdout_lines }}'
+  when: manage_ubuntu_V_238376
+
+- name: Filesystem - Get list of /sbin files - V-238376
+  command: find /sbin -perm /022 -type f
+  register: sbin_files
+  changed_when: false
+  when: manage_ubuntu_V_238376
+
+- name: Filesystem - Set /sbin permissions - V-238376
+  file:
+    mode: 0755
+    dest: '{{ item }}'
+  loop: '{{ sbin_files.stdout_lines }}'
+  when: manage_ubuntu_V_238376
+
+- name: Filesystem - Get list of /usr/bin files - V-238376
+  command: find /usr/bin -perm /022 -type f
+  register: usr_bin_files
+  changed_when: false
+  when: manage_ubuntu_V_238376
+
+- name: Filesystem - Set /usr/bin permissions - V-238376
+  file:
+    mode: 0755
+    dest: '{{ item }}'
+  loop: '{{ usr_bin_files.stdout_lines }}'
+  when: manage_ubuntu_V_238376
+
+- name: Filesystem - Get list of /usr/sbin files - V-238376
+  command: find /usr/sbin -perm /022 -type f
+  register: usr_sbin_files
+  changed_when: false
+  when: manage_ubuntu_V_238376
+
+- name: Filesystem - Set /usr/sbin permissions - V-238376
+  file:
+    mode: 0755
+    dest: '{{ item }}'
+  loop: '{{ usr_sbin_files.stdout_lines }}'
+  when: manage_ubuntu_V_238376
+
+- name: Filesystem - Get list of /usr/local/bin files - V-238376
+  command: find /usr/local/bin -perm /022 -type f
+  register: usr_local_bin_files
+  changed_when: false
+  when: manage_ubuntu_V_238376
+
+- name: Filesystem - Set /usr/local/bin permissions - V-238376
+  file:
+    mode: 0755
+    dest: '{{ item }}'
+  loop: '{{ usr_local_bin_files.stdout_lines }}'
+  when: manage_ubuntu_V_238376
+
+- name: Filesystem - Get list of /usr/local/sbin files - V-238376
+  command: find /usr/local/sbin -perm /022 -type f
+  register: usr_local_sbin_files
+  changed_when: false
+  when: manage_ubuntu_V_238376
+
+- name: Filesystem - Set /usr/local/sbin permissions - V-238376
+  file:
+    mode: 0755
+    dest: '{{ item }}'
+  loop: '{{ usr_local_sbin_files.stdout_lines }}'
+  when: manage_ubuntu_V_238376

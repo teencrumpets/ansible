@@ -1,0 +1,152 @@
+- name: Install dependencies
+  package: 
+    name: "{{ item.name }}"
+    state: present 
+  with_items:
+    - { name: nfs-common }
+    - { name: wget }
+    
+- name: Create Direcory for NFS Share
+  file:
+    state: directory
+    path: "{{docker_nfs_share}}"
+    owner: ypgansible
+    group: root
+    mode: '0774'
+
+- name: Mounting nfs_share
+  mount:
+    src: "{{ nfs_share }}"
+    path: "{{docker_nfs_share}}"
+    state: mounted
+    fstype: nfs
+  changed_when: false
+  
+# - name: Install Trivy signing key
+#   command: 
+#     cmd: curl -fsSL https://aquasecurity.github.io/trivy-repo/deb/public.key -o /etc/apt/keyrings/trivy.asc
+#     creates: /etc/apt/keyrings/trivy.asc
+
+- name: Add Trivy repo
+  lineinfile:
+    path: /etc/apt/sources.list.d/trivy.list
+    line: 'deb [trusted=yes] https://aquasecurity.github.io/trivy-repo/deb generic main'
+    state: present
+    regexp: '^(?!#).*aquasecurity\.github\.io\/trivy-repo\/deb'
+    create: true
+  register: trivy_repo
+
+- name: Verify Trivy repo
+  replace:
+    path: /etc/apt/sources.list.d/trivy.list
+    regexp: '^(?!#).*aquasecurity\.github\.io\/trivy-repo\/deb'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+
+- name: Update apt
+  apt:
+    update_cache: yes
+  failed_when: false
+  when: trivy_repo.changed
+
+- name: Install Assessment packages
+  package: 
+    name: "{{ item.name }}"
+    state: present 
+  with_items:
+  - { name: trivy }
+  - { name: clamav }
+  
+- name: Parsing image parameters
+  set_fact:
+    image_name: "{{ image_repo | split('/') }}"
+    timestamp_tag: "{{ image_tag }}_ypg_{{ '%Y-%m-%d_%H-%M-%S' | strftime }}"
+
+- name: Generating image facts
+  set_fact:
+    source_image: '{{ source_registry }}/{{ image_repo }}:{{ image_tag }}'
+    harbor_push: '{{ harbor_name }}/{{harbor_project}}/{{ image_name[-1] }}:{{ timestamp_tag }}'
+
+- name: Login to Harbor
+  shell: 'docker login {{ harbor_name }} -u {{ harbor_service_account }} -p {{ harbor_service_account_pass }}'
+  no_log: true
+
+- name: 'Pulling {{ source_image }}'
+  shell: 'docker pull {{ source_image }}'
+  changed_when: false
+
+- name: 'Tag image with {{ harbor_push }}'
+  shell: 'docker tag {{ source_image }} {{ harbor_push }}'
+
+- name: Create apt sources dump directory
+  file:
+    state: directory
+    path: /etc/apt/sources.list.d
+    owner: ypgansible
+    group: root
+    mode: '0774'
+
+- name: Trivy Scan
+  shell: 'trivy image --format json --skip-db-update --skip-java-db-update --scanners vuln --cache-dir {{trivy_vuln_db_path}} --timeout 1000s --output /{{image_name[-1]}}_{{image_tag}}_vulnerabilities.json {{ harbor_push }}'
+  register: trivy_scan
+  environment:
+    TMPDIR: '{{trivy_tmp_dir}}'
+  changed_when: false
+
+- name: Update ClamAV databases
+  shell: |
+    service clamav-freshclam stop
+    freshclam
+    service clamav-freshclam start
+
+- name: ClamAV scan Image Layers
+  shell: 'clamscan -ir /var/lib/docker/overlay2/'
+  register: clam_scan
+  changed_when: false
+
+- name: Generate SBOM
+  shell: 'trivy image --format cyclonedx --cache-dir {{trivy_vuln_db_path}} --output /{{image_name[-1]}}_{{image_tag}}_sbom.json {{ harbor_push }}'
+  register: trivy_sbom
+  environment:
+    TMPDIR: '{{trivy_tmp_dir}}'
+  changed_when: false
+
+- name: Writing malware scan output
+  copy:
+    dest: '/{{image_name[-1]}}_{{image_tag}}_malware.txt'
+    content: '{{ clam_scan.stdout_lines }}'
+  changed_when: false
+
+- name: Fetching artifacts
+  fetch:
+    src: '/{{ item.name }}'
+    dest: '{{ artifact_drop }}/'
+    flat: true
+  with_items:
+    - { name: '{{image_name[-1]}}_{{image_tag}}_sbom.json' }
+    - { name: '{{image_name[-1]}}_{{image_tag}}_vulnerabilities.json' }
+    - { name: '{{image_name[-1]}}_{{image_tag}}_malware.txt' }
+
+- name: Cleaning up nfs_share mount
+  mount:
+    src: "{{ nfs_share }}"
+    path: "{{docker_nfs_share}}"
+    state: absent
+    fstype: nfs
+  changed_when: false
+
+- name: Cleaning up images
+  shell: docker image prune -a -f
+  when: mode in ["continuous_scanning"]
+
+- name: Artifacts to NFS share
+  copy:
+    src: '{{ artifact_drop }}/{{ item.name }}'
+    dest: '{{image_assessment_share}}'
+  with_items:
+    - { name: '{{image_name[-1]}}_{{image_tag}}_vulnerabilities.json' }
+  delegate_to: localhost
+  when: mode in ["continuous_scanning"]

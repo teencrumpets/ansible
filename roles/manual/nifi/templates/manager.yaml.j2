@@ -1,0 +1,53 @@
+services:
+  zookeeper:
+    hostname: {{ item.zk_host_name }}
+    image: "{{ harbor_url_for_zookeeper }}:{{ zookeeper_version_tag }}"
+    restart: unless-stopped
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      - {{ item.nifi_net }}
+
+  registry:
+    hostname: {{ registry_hostname }}
+    image: "{{ harbor_url_for_nifi_registry }}:{{ nifi_registry_version_tag }}"
+    user: root
+    restart: unless-stopped
+    ports:
+      - "{{ registry_port }}:18443"
+    environment:
+      - AUTH={{ registry_auth_type }}
+      - KEYSTORE_PATH={{ registry_keystore_path }}
+      - KEYSTORE_TYPE={{ registry_keystore_type }}
+      - KEYSTORE_PASSWORD={{ registry_keystore_pw }}
+      - KEY_PASSWORD={{ registry_key_pw }}
+      - TRUSTSTORE_PATH={{ registry_truststore_path }}
+      - TRUSTSTORE_PASSWORD={{ trustStorePass }}
+      - TRUSTSTORE_TYPE={{ registry_truststore_type }}
+      - INITIAL_ADMIN_IDENTITY={{ nifi_admin_dn }}
+      - NODE_IDENTITY={{ nifi_admin_dn }}
+      - LOG_LEVEL=INFO
+      - NIFI_REGISTRY_DB_DIR=/opt/nifi-registry/nifi-registry-current/database
+      - NIFI_REGISTRY_FLOW_PROVIDER=file
+      - NIFI_REGISTRY_FLOW_STORAGE_DIR=/opt/nifi-registry/nifi-registry-current/flow_storage
+    volumes:
+      - registry-db:/opt/nifi-registry/nifi-registry-current/database
+      - flow-storage:/opt/nifi-registry/nifi-registry-current/flow_storage
+      - registry-conf:/opt/nifi-registry/nifi-registry-current/conf
+      - custom-processors:/ypg_processors
+    networks:
+      - {{ item.nifi_net }}
+
+networks:
+  {{ item.nifi_net }}:
+    name: {{ item.nifi_net }}
+
+volumes:
+  registry-db:
+    name: "{{ nifi_registry_db }}"
+  registry-conf:
+    name: "{{ nifi_registry_conf}}"
+  flow-storage:
+    name: "{{ item.nifi_flow_storage }}"
+  custom-processors:
+    name: "custom-processors"

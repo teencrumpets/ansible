@@ -1,0 +1,72 @@
+- hosts: "{{ HOSTS }}"
+  become: true
+
+  vars_files:
+  - environment/prod.yml
+  - environment/prod_vault.yml
+
+  tasks:
+    - name: Creating inventory directory
+      file:
+        state: directory
+        path: "{{ inventory_path }}"
+        owner: "{{ inventory_owner }}"
+        group: "{{ inventory_group }}"
+        mode: 0775
+    
+    - name: Copying script
+      copy:
+        src: ./scripts/snow-inventory.py
+        dest: "{{ inventory_path }}/snow-inventory.py"
+        mode: 0775
+      changed_when: false
+
+    - name: Copying mapping file
+      copy:
+        src: ./scripts/snow_groups.yml
+        dest: "{{ inventory_path }}/snow_groups.yml"
+        mode: 0775
+      changed_when: false
+
+    - name: Creating inventory in "{{ inventory_path }}"
+      command:
+        cmd: ./snow-inventory.py -u "{{ snow_user }}" -p  '{{ snow_pw }}' -o "{{ inventory_path }}" -l "{{ snow_url }}"
+        chdir: "{{ inventory_path }}"
+      ignore_errors: true
+      changed_when: false
+      no_log: true
+
+    - name: Setting inventory permissions
+      file:
+        state: file
+        path: "{{ item.path }}"
+        owner: "{{ inventory_owner }}"
+        group: "{{ inventory_group }}"
+        mode: 0775
+      with_items:
+        - { path: "{{ inventory_path }}/inventory.yml" }
+        - { path: "{{ inventory_path }}/Lab-inventory.yml" }
+        - { path: "{{ inventory_path }}/Pre-Production-inventory.yml" }
+      changed_when: false
+
+    - name: Cleaning up script
+      file:
+        state: absent
+        path: "{{ inventory_path }}/snow-inventory.py"
+      changed_when: false
+
+    - name: Cleaning up mapping file
+      file:
+        state: absent
+        path: "{{ inventory_path }}/snow_groups.yml"
+      changed_when: false
+
+    - name: Cleaning inventory file
+      file:
+        state: absent
+        path: "{{item.path}}"
+      with_items:
+        - { path: "{{ inventory_path }}/inventory.yml" }
+        - { path: "{{ inventory_path }}/Lab-inventory.yml" }
+        - { path: "{{ inventory_path }}/Pre-Production-inventory.yml" }
+      when: clean_inventory

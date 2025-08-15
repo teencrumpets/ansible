@@ -1,0 +1,16 @@
+# Need to work on creating backup task
+# - name: Stopping nifi service
+#   command:
+#     cmd: 'docker compose down'
+#     chdir: "/opt/compose/{{ item.nifi_node_dir }}"
+#   changed_when: false
+#   with_items: "{{ nifi_nodes }}"
+#   when: ((nifi_node == item.keys() | list | first) and (mode == "backup"))
+
+# - name: Mount nfs backup share
+#   mount:
+#     src: "{{ nfs_share }}"
+#     path: "{{ nifi_mount_dir }}"
+#     state: mounted
+#     fstype: nfs
+#     changed_when: false

@@ -1,0 +1,8 @@
+minio_version: "RELEASE.2024-03-30T09-41-56Z"
+minio_port: "9000"
+minio_console_port: "9001"
+minio_storage: "minio_storage"
+minio_user: "svc.dev.ypg"
+minio_data: "minio-data"
+minio_log_name: "minio_log"
+minio_container_name: "minio"

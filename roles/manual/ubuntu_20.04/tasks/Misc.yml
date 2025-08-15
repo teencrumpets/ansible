@@ -1,0 +1,222 @@
+- name: Misc - Configuring files for checks - V-238207, V-238333, V-238330, V-238357
+  lineinfile:
+    path: "{{ item.path }}"
+    line: "{{ item.line }}"
+    state: present
+    create: yes
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { path: '/etc/profile.d/99-terminal_tmout.sh', line: 'TMOUT=600', regexp: '^(?i)TMOUT', managed: "{{ manage_ubuntu_V_238207 }}" }
+    - { path: '/etc/sysctl.conf', line: 'net.ipv4.tcp_syncookies = 1', regexp: '^(?i)net.ipv4.tcp_syncookies', managed: "{{ manage_ubuntu_V_238333 }}" }
+    - { path: '/etc/default/useradd', line: 'INACTIVE=35', regexp: '^(?i)INACTIVE\s*', managed: "{{ manage_ubuntu_V_238330 }}" }
+    - { path: '/etc/chrony/chrony.conf', line: 'makestep 1 -1', regexp: '^(?i)makestep\s+1', managed: "{{ manage_ubuntu_V_238357 }}" }
+  when: item.managed
+  notify: Restart Chrony
+
+- name: Misc - Verify files for checks - V-238207, V-238333, V-238330, V-238357
+  replace:
+    path: "{{ item.path }}"
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { path: '/etc/profile.d/99-terminal_tmout.sh', regexp: '^(?i)TMOUT', managed: "{{ manage_ubuntu_V_238207 }}" }
+    - { path: '/etc/sysctl.conf', regexp: '^(?i)net.ipv4.tcp_syncookies', managed: "{{ manage_ubuntu_V_238333 }}" }
+    - { path: '/etc/default/useradd', regexp: '^(?i)INACTIVE', managed: "{{ manage_ubuntu_V_238330 }}" }
+    - { path: '/etc/chrony/chrony.conf', regexp: '^(?i)makestep', managed: "{{ manage_ubuntu_V_238357 }}" }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: item.managed
+
+- name: Misc - Configuring /etc/chrony/chrony.conf - V-238356
+  lineinfile:
+    path: '/etc/chrony/chrony.conf'
+    state: present
+    line: 'server {{ time_server_ip }} iburst maxpoll 16'
+    insertbefore: '(?i)This directive specify the location of the file containing ID\/key pairs for'
+  notify: Restart Chrony
+  when: manage_ubuntu_V_238356
+
+- name: Misc - Format time server IP - V-238356
+  set_fact:
+    formatted_ip: "{{ time_server_ip | regex_replace('\\.', '\\.') }}"
+  when: manage_ubuntu_V_238356
+
+- name: Misc - Verify /etc/chrony/chrony.conf - V-238356
+  replace:
+    path: '/etc/chrony/chrony.conf'
+    regexp: '^(?i)server\s+{{formatted_ip}}\s+iburst\s+maxpoll\s+16'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_238356
+
+
+- name: Misc - Get list of files from /etc/sysctl.d - V-238369
+  find:
+    paths: '/etc/sysctl.d'
+    recurse: yes
+    file_type: file
+  register: sysctl_files
+  when: manage_ubuntu_V_238369
+
+- name: Misc - Ensure kernel.randomize_va_space is not in list of sysctl_files - V-238369
+  replace: 
+    path: '{{ item.path }}'
+    regexp: '^(?i)kernel\.randomize_va_space'
+  loop: '{{ sysctl_files.files }}' 
+  notify: Reload System Config Files
+  when: manage_ubuntu_V_238369
+
+- name: Misc - Verify kernel.randomize_va_space is not in list of sysctl_files - V-238369
+  replace:
+    path: '{{ item.path }}'
+    regexp: 'kernel\.randomize_va_space'
+    replace: ''
+  loop: '{{ sysctl_files.files }}'
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg
+  ignore_errors: true
+  changed_when: false
+  when: manage_ubuntu_V_238369
+
+- name: Misc - Ensure kernel.randomize_va_space is not in /etc/sysctl.conf - V-238369
+  replace: 
+    path: '/etc/sysctl.conf'
+    regexp: 'kernel\.randomize_va_space'
+  notify: Reload System Config Files
+  when: manage_ubuntu_V_238369
+
+- name: Misc - Verify kernel.randomize_va_space is not in /etc/sysctl.conf - V-238369
+  replace:
+    path: '/etc/sysctl.conf'
+    regexp: 'kernel\.randomize_va_space'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg
+  ignore_errors: true
+  changed_when: false
+  when: manage_ubuntu_V_238369
+
+- name: Misc - Check if ctrl-alt-del.target is masked - V-238380
+  shell: systemctl status ctrl-alt-del.target | awk 'NR==2 {print $2}'
+  register: target_masked
+  changed_when: false
+  when: manage_ubuntu_V_238380
+
+- name: Misc - Configure system not to reboot on ctrl-alt-del - V-238380
+  command: '{{item}}'
+  with_items:
+    - systemctl disable ctrl-alt-del.target
+    - systemctl mask ctrl-alt-del.target
+  notify: Reload Daemon
+  when: (manage_ubuntu_V_238380) and (target_masked.stdout != "masked")
+
+
+- name: Misc - Configure OS to prevent direct logins to root account - V-238329
+  user: 
+    name: root
+    password_lock: true
+  when: manage_ubuntu_V_238329
+
+- name: Misc - Ensure Ubuntu Advantage is installed - V-238363
+  package: 
+    name: ubuntu-advantage-tools
+    state: present
+  when: manage_ubuntu_V_238363
+
+- name: Misc - Check ua subscription - V-238363
+  shell: ua status | awk 'NR==9 {print}'
+  register: check_ua
+  changed_when: false
+  failed_when: check_ua.stdout == "This machine is not attached to an Ubuntu Pro subscription."
+  ignore_errors: true
+  when: manage_ubuntu_V_238363
+
+- name: Misc - Ensure fips is enabled - V-238363
+  shell: ua status | grep fips-updates | awk '{print $3}'
+  register: check_ua_active
+  changed_when: false
+  when: manage_ubuntu_V_238363
+
+- name: Misc - Enable FIPS - V-238363
+  command: ua enable fips-updates --assume-yes
+  ignore_errors: true
+  when: (manage_ubuntu_V_238363) and (check_ua_active.stdout != "enabled") and (check_ua.stdout != "This machine is not attached to an Ubuntu Pro subscription.")
+
+- name: Misc - Check timezone -V-238308
+  shell: timedatectl status | grep -i "time zone" | awk '{print $3}'
+  register: timezone
+  changed_when: false
+  when: manage_ubuntu_V_238308
+
+- name: Misc - Set timezone - V-238308
+  command: timedatectl set-timezone UTC
+  when: (manage_ubuntu_V_238308) and (timezone.stdout != "UTC")
+
+- name: Misc - Set kernel.dmesg -V-255913
+  lineinfile:
+    path: '/etc/sysctl.conf'
+    line: 'kernel.dmesg_restrict = 1'
+    regexp: '^(?i)kernel.dmesg_restrict'
+  notify: Reload System Config Files
+  when: manage_ubuntu_V_255913
+
+- name: Misc - Verify kernel.dmesg set -V-255913
+  replace:
+    path: '/etc/sysctl.conf'
+    regexp: '^(?i)kernel.dmesg_restrict'
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_255913
+
+- name: Misc - Find files that set kernel.dmesg -V-255913
+  shell: grep -r "^kernel.dmesg_restrict"  /run/sysctl.d/* /etc/sysctl.d/* /usr/local/lib/sysctl.d/* /usr/lib/sysctl.d/* /lib/sysctl.d/* /etc/sysctl.conf 2> /dev/null | awk -F ':' '{print $1}'
+  register: files
+  changed_when: false
+  when: manage_ubuntu_V_255913
+
+- name: Misc - Ensure all files set kernel.dmesg correctly - V-255913
+  lineinfile:
+    path: '{{ item }}'
+    line: 'kernel.dmesg_restrict = 1'
+    regexp: '^(?i)kernel.dmesg_restrict'
+  loop: '{{ files.stdout_lines }}'
+  notify: Reload System Config Files
+  when: manage_ubuntu_V_255913
+
+- name: Misc - Verify all files set kernel.dmesg correctly - V-255913
+  replace:
+    path: "{{ item }}"
+    regexp: '^(?i)kernel.dmesg_restrict'
+    replace: ''
+  loop: '{{ files.stdout_lines }}'
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_ubuntu_V_255913
+
+- name: Misc - disable auto upgrade - V-255913
+  lineinfile:
+    path: /etc/update-manager/release-upgrades
+    regexp: ^(?i)Prompt\s*=
+    line: 'Prompt=never'
+  
+- name: Misc - Verifying disable auto upgrade -V-255913
+  replace:
+    path: /etc/update-manager/release-upgrades
+    regexp: ^(?i)Prompt\s*=
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false

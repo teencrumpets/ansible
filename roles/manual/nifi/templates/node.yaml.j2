@@ -1,0 +1,61 @@
+services:
+  nifi:
+    hostname: {{ item.host_name }}
+    image: "{{ harbor_url_for_nifi }}:{{ nifi_version_tag }}"
+    restart: unless-stopped
+    ports:
+      - '{{ item.nifi_port }}:{{ item.nifi_port }}'
+    environment:
+      - NIFI_WEB_HTTPS_PORT={{ item.nifi_port }}
+      - NIFI_WEB_PROXY_HOST={{ item.host_name }}:{{ item.nifi_port}}
+      - NIFI_REMOTE_INPUT_SOCKET_PORT={{ item.socket_port }}
+      - NIFI_REMOTE_INPUT_HOST={{ item.host_name }}
+      - NIFI_CLUSTER_IS_NODE=true
+      - NIFI_CLUSTER_NODE_PROTOCOL_PORT={{ item.cluster_port }}
+      - NIFI_ZK_CONNECT_STRING={{ item.zk_connection }}
+      - NIFI_ELECTION_MAX_WAIT=30 sec
+      - NIFI_SENSITIVE_PROPS_KEY='{{ item.nifi_sensitive_key }}'
+      - INITIAL_ADMIN_IDENTITY=CN=ABITONG.AARON.ANTHONY.1468121197, OU=CONTRACTOR, OU=PKI, OU=DoD, O=U.S. Government, C=US
+      - NODE_IDENTITY=CN=ABITONG.AARON.ANTHONY.1468121197, OU=CONTRACTOR, OU=PKI, OU=DoD, O=U.S. Government, C=US
+      #- SINGLE_USER_CREDENTIALS_USERNAME={{ item.nifi_single_username }}
+      #- SINGLE_USER_CREDENTIALS_PASSWORD={{ item.nifi_single_userpw }}
+    volumes:
+      - nifi-data:/opt/nifi/filedata
+      - nifi-database:/opt/nifi/nifi-current/database_repository
+      - nifi-flow:/opt/nifi/nifi-current/flowfile_repository
+      - nifi-content:/opt/nifi/nifi-current/content_repository
+      - nifi-prov:/opt/nifi/nifi-current/provenance_repository
+      - nifi-state:/opt/nifi/nifi-current/state
+      - nifi-logs:/opt/nifi/nifi-current/logs
+      - nifi-config:/opt/nifi/nifi-current/conf
+      - nifi-store:/nifi-store
+      - custom-processors:/opt/nifi/nifi-current/extensions:ro
+    networks:
+      - {{ item.nifi_net }}
+
+networks:
+  {{ item.nifi_net }}:
+    external: true
+
+volumes:
+  nifi-data:
+    name: "{{ item.nifi_volume }}"
+  nifi-database:
+    name: "{{ item.nifi_db }}"
+  nifi-flow:
+    name: "{{ item.nifi_flowrepo }}"
+  nifi-content:
+    name: "{{ item.nifi_contentrepo }}"
+  nifi-prov:
+    name: "{{ item.nifi_provrepo }}"
+  nifi-state:
+    name: "{{ item.nifi_state }}"
+  nifi-logs:
+    name: "{{ item.nifi_logs }}"
+  nifi-config:
+    name: "{{ item.nifi_configuration }}"
+  nifi-store:
+    name: "{{ item.nifi_store }}"
+  custom-processors:
+    name: "custom-processors"
+    external: true

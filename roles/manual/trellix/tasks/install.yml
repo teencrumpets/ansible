@@ -1,0 +1,124 @@
+- name: Create McAfee directory
+  file:
+    state: directory
+    path: /opt/McAfee
+    owner: root
+    group: root
+    mode: 0755
+
+- name: Install Unzip application
+  package:
+    name: unzip
+    state: present
+
+- name: Create trellix mount directory
+  file:
+    state: directory
+    path: "{{ trellix_mount }}"
+    owner: ypgansible
+    group: ypgansible
+    mode: 0770
+
+- name: Mounting nfs share
+  mount:
+    src: "{{ nfs_share }}"
+    path: "{{ trellix_mount }}"
+    state: mounted
+    fstype: nfs
+  changed_when: false
+
+- name: Copy installdeb.sh Trellix agent installer to Ubuntu
+  copy:
+    remote_src: yes
+    src: "{{ trellix_agent_dir }}/installdeb.sh"
+    dest: /opt/McAfee
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: Modify installdeb.sh file permissions
+  file:
+    state: file
+    path: /opt/McAfee/installdeb.sh
+    owner: root
+    group: root
+    mode: a+x
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: Attempt Trellix agent install on Ubuntu
+  command: /opt/McAfee/installdeb.sh -i
+  register: check_trellix
+  changed_when: check_trellix.rc == 0
+  failed_when: check_trellix.rc > 1
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: Copy installrpm.sh Trellix agent installer to Red Hat
+  copy:
+    remote_src: yes
+    src: "{{ trellix_agent_dir }}/installrpm.sh"
+    dest: /opt/McAfee
+  when: ansible_facts['os_family'] == "RedHat"
+
+- name: Modify installrpm.sh file permissions
+  file:
+    state: file
+    path: /opt/McAfee/installrpm.sh
+    owner: root
+    group: root
+    mode: a+x
+  when: ansible_facts['os_family'] == "RedHat"
+
+- name: Attempt Trellix agent install on RedHat
+  command: /opt/McAfee/installrpm.sh -i
+  register: check_trellix
+  changed_when: check_trellix.rc == 0
+  failed_when: check_trellix.rc > 1
+  when: ansible_facts['os_family'] == "RedHat"
+
+- name: Trellix collect and send properties
+  command: /opt/McAfee/agent/bin/cmdagent -p
+  changed_when: false 
+
+- name: Enable Trellix agent
+  service:
+    name: mcafee.ma
+    enabled: true
+    state: started
+
+- name: Configure rsyslog for Mcafee logs
+  lineinfile:
+    create: true
+    path: /etc/rsyslog.d/16-mcafee.conf
+    line: "{{ item.line }}"
+    state: present
+    regexp: "{{ item.regexp }}"
+  with_items:
+    - { line: '$InputFileName /var/McAfee/ens/log/tp/mfetpd.log ', regexp: '(?i)^\$InputFileName\s\/var\/McAfee\/ens\/log\/tp\/mfetpd\.log' }
+    - { line: '$InputFileTag tag_mcafeeaudit_log', regexp: '(?i)^\$InputFileTag\stag_mcafeeaudit_log' }
+    - { line: '$InputRunFileMonitor', regexp: '(?i)^\$InputRunFileMonitor' }
+    - { line: 'if $syslogtag contains "tag_mcafeeaudit_log" then { action(type="omfwd" target="{{ rsyslog_server_ip }}" port="{{ rsyslog_linux_port }}" protocol="tcp")  stop }', regexp: '(?i)^if\s\$syslogtag\scontains\s"tag_mcafeeaudit_log"\sthen\s' }
+  when: manage_mcafeeaudit_offloading
+  notify: restart_rsyslog
+
+- name: Verify /etc/rsyslog.d/16-mcafee.conf
+  replace:
+    path: /etc/rsyslog.d/16-mcafee.conf
+    regexp: "{{ item.regexp }}"
+    replace: ''
+  with_items:
+    - { regexp: '(?i)^\$InputFileName\s\/var\/McAfee\/ens\/log\/tp\/mfetpd\.log' }
+    - { regexp: '(?i)^\$InputFileTag\stag_mcafeeaudit_log' }
+    - { regexp: '(?i)^\$InputRunFileMonitor' }
+    - { regexp: '(?i)^\$InputRunFileMonitor' }
+    - { regexp: '(?i)^if\s\$syslogtag\scontains\s"tag_mcafeeaudit_log"\sthen\s' }
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+  when: manage_mcafeeaudit_offloading
+
+- name: Unmount nfs share
+  mount:
+    src: "{{ nfs_share }}"
+    path: "{{ trellix_mount }}"
+    state: unmounted
+    fstype: nfs
+  changed_when: false

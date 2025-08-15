@@ -1,0 +1,41 @@
+- name: Mounting backup share
+  mount:
+    src: "{{ backup_share }}"
+    path: '{{ backup_mount_dir_harbor }}'
+    state: mounted
+    fstype: nfs
+  changed_when: false
+
+- name: Checking for existing installations
+  stat:
+    path: '{{ harbor_install_dir }}'
+  register: harbor_installed
+
+- name: Stopping Harbor service
+  command:
+    cmd: 'docker compose down'
+    chdir: '{{ harbor_install_dir }}'
+  ignore_errors: true
+  when: harbor_installed.stat.exists
+
+- name: Creating harbor compose directory
+  file:
+    path: '{{ harbor_install_dir }}'
+    state: directory
+    mode: 0774
+
+- name: Get volume backup list harbor
+  find:
+    paths: "{{ harbor_restore_dir }}"
+    file_type: file
+  register: backups
+
+- name: Get newest volume backup harbor
+  set_fact:
+    newest: "{{ backups.files | sort(attribute='mtime') | last }}"
+
+- name: Restoring volume harbor
+  command:
+    cmd: "tar xvpf {{ newest.path }}"
+    chdir: "{{ harbor_install_dir }}"
+  changed_when: false

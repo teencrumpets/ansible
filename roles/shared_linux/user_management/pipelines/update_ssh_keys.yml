@@ -1,0 +1,69 @@
+trigger: none
+
+pool:
+  name: 'nec_ondemand_L'
+
+variables:
+  - group: Ansible
+
+  - name: ENV
+    value: prod
+
+  - name: inventory
+    value: "inventory.yml"
+
+  - name: vault
+    value: "vault_key"
+
+  - name: playbook_mode
+    value: "update"
+
+parameters:
+  - name: Instructions
+    displayName: "Follow these instructions:"
+    type: string
+    default: "https://confluence.web.yuma.army.mil/display/ND/SSH+User+Management"
+
+  - name: USERNAME
+    displayName: "Username:"
+    type: string
+
+  - name: SSH_PUBLIC
+    displayName: "Paste SSH Key"
+    type: string
+
+steps:
+- script: python3 -m pip install --upgrade pip
+  displayName: 'Upgrade pip'
+
+- script: python3 -m pip install --upgrade ansible
+  displayName: 'Install ansible'
+
+- task: DownloadSecureFile@1
+  name: ssh_key
+  displayName: 'Download SSH Key'
+  inputs:
+    secureFile: 'ypgansible_ssh' 
+
+- task: DownloadSecureFile@1
+  name: vault_key
+  displayName: 'Download Vault Key'
+  inputs:
+    secureFile: $(vault)
+
+- script: chmod 600 $(ssh_key.secureFilePath)
+  displayName: 'Setting SSH Key permissions'
+
+- script: >
+    ansible-playbook site.yml 
+    -i $(inventory_path)/$(inventory) 
+    -e 
+    "ssh_public_key=${{parameters.SSH_PUBLIC}} 
+    ENV=$(ENV) 
+    username=${{parameters.USERNAME}} 
+    HOSTS=localhost 
+    user_mode=$(playbook_mode) 
+    role=user_management" 
+    --vault-password-file=$(vault_key.secureFilePath) 
+    --key-file '$(ssh_key.secureFilePath)'
+  displayName: 'deploying user_management role for ssh keys'

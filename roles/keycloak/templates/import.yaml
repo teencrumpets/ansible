@@ -1,0 +1,10 @@
+services:
+  keycloak:
+    restart: no
+    command:
+      [
+        'import', '--verbose', '--file', '/exports/{{ realm }}.json'
+      ]
+    user: "0:0"
+    volumes:
+      - '/tmp/docker_files:/exports'

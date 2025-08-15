@@ -1,0 +1,81 @@
+- name: Disable IPV6
+  lineinfile:
+    line: 'IPV6=no'
+    regexp: '^(?i)IPV6\s*='
+    path: /etc/default/ufw
+  
+- name: Verify disable IPV6
+  replace:
+    path: /etc/default/ufw
+    regexp: '^(?i)IPV6\s*='
+    replace: ''
+  check_mode: yes
+  register: diff
+  failed_when: diff.msg != "1 replacements made"
+  changed_when: false
+
+- name: Query existing ufw rules
+  shell: ufw status verbose
+  register: existing_rules
+  changed_when: false
+
+- name: Search for UFW application files
+  find:
+    path: /etc/ufw/applications.d
+    hidden: True
+    recurse: True
+  register: applications
+
+- name: Remove UFW application files
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  with_items: "{{ applications.files }}"
+
+- name: Reset UFW
+  ufw: 
+    state: reset
+  changed_when: false
+
+- name: Allow outgoing
+  ufw: 
+    default: allow
+    direction: outgoing
+  changed_when: false
+
+- name: Disallow ingoing
+  ufw: 
+    default: deny
+    direction: incoming
+  changed_when: false
+
+- name: Process UFW rule precedence
+  set_fact:
+    combined_rules: "{{ (ufw_group | default([]) | sort(attribute='order')) + (ufw_env | default([]) | sort(attribute='order')) + (ufw_host | default([]) | sort(attribute='order')) + (ufw_defaults | default([]) | sort(attribute='order')) }}"
+
+- block:
+  - name: "Parsing UFW rules"
+    include_tasks: ufw_rules.yml
+    loop: "{{combined_rules}}"
+    loop_control:
+      label: "Adding rule"
+
+- name: Enable Firewall
+  ufw: 
+    state: enabled
+  changed_when: false
+
+- name: Query new ufw rules
+  shell: ufw status verbose
+  register: new_rules
+  changed_when: false
+
+- name: Firewall rules have changed
+  debug:
+    msg:
+    - "Starting rules:"
+    - "{{ existing_rules.stdout_lines }}"
+    - "New rules:"
+    - "{{ new_rules.stdout_lines }}"
+  when: new_rules.stdout_lines != existing_rules.stdout_lines
+  changed_when: true

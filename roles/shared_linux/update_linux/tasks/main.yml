@@ -1,0 +1,23 @@
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    state: present
+  changed_when: false
+
+- name: Upgrade packages
+  apt:
+    upgrade: yes
+    state: latest
+    
+- name: Remove unused dependencies
+  apt:
+    autoremove: yes
+    state: present
+
+- name: Notify reboot handler
+  file:
+    path: /var/run/reboot-required
+    state: absent
+  check_mode: true
+  notify: Reboot
+  when: allow_reboot
